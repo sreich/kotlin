@@ -368,7 +368,7 @@ public abstract class BasicTest extends KotlinTestWithEnvironment {
     }
 
     @NotNull
-    private List<String> withAdditionalJsFiles(@NotNull String inputFile, @NotNull EcmaVersion ecmaVersion) {
+    List<String> withAdditionalJsFiles(@NotNull String inputFile, @NotNull EcmaVersion ecmaVersion) {
         List<String> allFiles = Lists.newArrayList(additionalJsFiles(ecmaVersion));
         allFiles.add(inputFile);
         return allFiles;

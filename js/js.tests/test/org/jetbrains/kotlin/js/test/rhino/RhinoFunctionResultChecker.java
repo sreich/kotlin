@@ -67,7 +67,7 @@ public class RhinoFunctionResultChecker implements RhinoResultChecker {
         return cx.evaluateString(scope, functionCallString(), "function call", 0, null);
     }
 
-    private String functionCallString() {
+    public String functionCallString() {
         StringBuilder sb = new StringBuilder();
 
         if (withModuleSystem) {

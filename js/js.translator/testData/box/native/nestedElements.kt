@@ -49,6 +49,7 @@ fun box(): String {
     return "OK";
 }
 
+@JsName("_Object")
 external object Object {
     object Object {
         val a: String = definedExternally

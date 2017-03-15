@@ -1,5 +1,5 @@
-var Object = createTestObject("Object", 23);
-extend(Object, {
+var _Object = createTestObject("Object", 23);
+extend(_Object, {
     Object: extend(createTestObject("Object.Object", 123), { AnotherClass : createTestClass("Object.Object.Class", 42, 142) }),
     Class: createTestClass("Object.Class", 42, 142),
     Trait : createTestObject("Object.Trait", 324),
