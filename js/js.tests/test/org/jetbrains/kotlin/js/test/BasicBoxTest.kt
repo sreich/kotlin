@@ -21,7 +21,7 @@ import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.StandardFileSystems
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiManager
-import jdk.nashorn.api.scripting.NashornScriptEngine
+import jdk.nashorn.api.scripting.NashornScriptEngineFactory
 import jdk.nashorn.api.scripting.ScriptObjectMirror
 import junit.framework.TestCase
 import org.jetbrains.kotlin.cli.common.messages.AnalyzerWithCompilerReport
@@ -61,12 +61,12 @@ import java.io.PrintStream
 import java.nio.charset.Charset
 import java.util.*
 import java.util.regex.Pattern
+import javax.script.Bindings
 import javax.script.Invocable
-import javax.script.ScriptContext
 import javax.script.ScriptEngine
-import javax.script.ScriptEngineManager
 
 private var engine: ScriptEngine? = null
+private var engineBindings: Bindings? = null
 
 //internal var modules: ScriptObjectMirror? = null
 //internal var testModule: ScriptObjectMirror? = null
@@ -159,87 +159,72 @@ abstract class BasicBoxTest(
         }
     }
 
-    private fun runUsingNashorn(files: List<String>, checker: RhinoFunctionResultChecker, mainModuleName: String, testPackage: String?, testFunction: String, s3: String, withModuleSystem: Boolean, modules: Map<String, TestModule>): Unit {
-        val testName = getTestName(true)
+    private fun runUsingNashorn(files: List<String>, checker: RhinoFunctionResultChecker, mainModuleName: String, testPackageName: String?, testFunction: String, s3: String, withModuleSystem: Boolean, modules: Map<String, TestModule>): Unit {
         val engine = getEngine()
-
-//        val bindings = SimpleBindings()
 
         for (file in files) {
             engine.eval("load('" + File(file).path + "');")
             //engine.eval(new FileReader(file));
         }
 
-        var testModule: ScriptObjectMirror? = null
-        if (testModule == null) {
-//            val kotlin = engine.get("Kotlin") as ScriptObjectMirror
-//            modules = kotlin["modules"] as ScriptObjectMirror
-            testModule = engine.get(mainModuleName) as ScriptObjectMirror
-        }
+        val testModule =
+                when {
+                    withModuleSystem ->
+                        engine.eval(BasicBoxTest.KOTLIN_TEST_INTERNAL + ".require('" + mainModuleName + "')") as ScriptObjectMirror
+                    else ->
+                        engine.get(mainModuleName) as ScriptObjectMirror
+                }
 
-/*
+        val testPackage =
+                when {
+                    testPackageName === null ->
+                        testModule
+                    testPackageName.contains(".") ->
+                        testPackageName.split(".").fold(testModule) { p, part -> p[part] as ScriptObjectMirror }
+                    else ->
+                        testModule[testPackageName]!!
+                }
 
-        if (withModuleSystem) {
-            sb.append(BasicBoxTest.KOTLIN_TEST_INTERNAL).append(".require('").append(moduleId).append("')")
-        }
-        else if (moduleId.contains(".")) {
-            sb.append("this['").append(moduleId).append("']")
-        }
-        else {
-            sb.append(moduleId)
-        }
-
-        if (packageName != null) {
-            sb.append('.').append(packageName)
-        }
-        return sb.append(".").append(functionName).append("()").toString()
-*/
-
-
-        val p: Any
-        if (testPackage === null) {
-            p = testModule
-        }
-        else if (testPackage.contains(".")) {
-            val parts = testPackage.split(".") // ??? .dropLastWhile({ it.isEmpty() }).toTypedArray()
-            var t = testModule!!
-            for (part in parts) {
-                t = t[part] as ScriptObjectMirror
-            }
-            p = t
-        }
-        else {
-            p = testModule[testPackage]!!
-        }
-//
-        val actual = (engine as Invocable).invokeMethod(p, testFunction)
-        //engine.eval("Kotlin.modules." + TEST_MODULE + "." + (packageName == "_" ? "" : packageName + ".") + functionName + "()");
+        val actual = (engine as Invocable).invokeMethod(testPackage, testFunction)
 //        val actual = engine.eval(checker.functionCallString())
 
 //        modules.removeMember(BasicTest.TEST_MODULE)
         TestCase.assertEquals("OK", actual)
 
-//        modules.keys.forEach {
-//            val message = engine.context.removeAttribute(it, ScriptContext.GLOBAL_SCOPE)
-//            println(message)
-//        }
+        modules.keys.forEach {
+            engine.eval("this['$it'] = void 0")
+        }
+
+        if (withModuleSystem) {
+            listOf("emulatedModules", "module", "require", "\$kotlin_test_internal$", "define").forEach {
+                engine.eval("this['$it'] = void 0")
+            }
+        }
     }
 
     private fun getEngine(): ScriptEngine {
+        val engine0 =
+                if (engine != null) {
+                    engine!!
+                }
+                else {
+                    createEngine().apply {
+                        engine = this
+//                        engineBindings = context.getBindings(ScriptContext.ENGINE_SCOPE)
+                    }
+                }
 
-        if (engine != null) {
-            engine!!.context.setBindings(engine!!.createBindings(), ScriptContext.ENGINE_SCOPE)
-            //engine.eval(
-            //        "var tmp0$$$ = Kotlin.modules." + STDLIB_JS_MODULE_NAME + ";" +
-            //        "var tmp1$$$ = Kotlin.modules." + BUILTINS_JS_MODULE_NAME + ";" +
-            //        "Kotlin.modules = {};" +
-            //        "Kotlin.modules." + STDLIB_JS_MODULE_NAME + " = tmp0$$$;" +
-            //        "Kotlin.modules." + BUILTINS_JS_MODULE_NAME + " = tmp1$$$;"
-            //);
-            return engine!!
-        }
+//        val bindings = engine0.createBindings().apply { putAll(engineBindings!!) }
+//        engine0.context.setBindings(bindings, ScriptContext.ENGINE_SCOPE)
 
-        engine = ScriptEngineManager().getEngineByExtension("js") as NashornScriptEngine
+        return engine0
+    }
+    private fun createEngine(): ScriptEngine {
+        val factory = NashornScriptEngineFactory()
+        val args = arrayOf(//"-strict",// this -> root in umd "prefix"
+                "--language=es5", "--no-java", "--no-syntax-extensions"//, "--optimistic-types", "--debug-locals"
+                )
+        val engine = factory.getScriptEngine(*args)
 
         engine!!.eval("var console = { log : function() {} }")
 
@@ -255,17 +240,20 @@ abstract class BasicBoxTest(
                 //DIST_DIR_JS_PATH + BUILTINS_JS_FILE_NAME
         )
         for (file in lib) {
-            engine!!.eval("load('" + File(file).path + "');")
+            engine.eval("load('" + File(file).path + "');")
             //engine.eval(new FileReader(file));
         }
 
-        val gs = engine!!.context.getBindings(ScriptContext.GLOBAL_SCOPE)
-        val es = engine!!.context.getBindings(ScriptContext.ENGINE_SCOPE)
-        engine!!.context.setBindings(es, ScriptContext.GLOBAL_SCOPE)
-        engine!!.context.setBindings(engine!!.createBindings(), ScriptContext.ENGINE_SCOPE)
+        engine.eval("this['kotlin-test'].kotlin.test._asserter = new this['kotlin-test'].kotlin.test.DefaultAsserter()")
 
-        return engine!!
+//        val gs = engine!!.context.getBindings(ScriptContext.GLOBAL_SCOPE)
+//        val es = engine!!.context.getBindings(ScriptContext.ENGINE_SCOPE)
+//        engine!!.context.setBindings(es, ScriptContext.GLOBAL_SCOPE)
+//        engine!!.context.setBindings(engine!!.createBindings(), ScriptContext.ENGINE_SCOPE)
+
+        return engine
     }
+
     private fun generateNodeRunner(files: Collection<String>, dir: File, moduleName: String, testPackage: String?): String {
         val sb = StringBuilder("var text = \"\";\n")
         sb.append("var fs = require('fs');\n")
