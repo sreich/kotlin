@@ -83,11 +83,12 @@ public abstract class AbstractDataFlowTest extends AbstractPseudocodeTest {
                 maxWidth = length;
             }
         }
+
         return maxWidth;
     }
 
     @NotNull
-    private static <S, I extends ControlFlowInfo<S>> String dumpEdgesData(String prefix, @NotNull Edges<I> edges) {
+    private static <S, I extends ControlFlowInfo<?, S>> String dumpEdgesData(String prefix, @NotNull Edges<I> edges) {
         return prefix +
                " in: " + renderVariableMap(edges.getIncoming()) +
                " out: " + renderVariableMap(edges.getOutgoing());

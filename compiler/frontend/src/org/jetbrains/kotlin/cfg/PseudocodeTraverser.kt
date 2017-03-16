@@ -23,6 +23,7 @@ import org.jetbrains.kotlin.cfg.pseudocode.instructions.special.LocalFunctionDec
 import org.jetbrains.kotlin.cfg.pseudocode.instructions.special.SubroutineEnterInstruction
 import org.jetbrains.kotlin.cfg.pseudocode.instructions.special.SubroutineSinkInstruction
 import org.jetbrains.kotlin.cfg.pseudocodeTraverser.TraversalOrder.FORWARD
+import org.jetbrains.kotlin.util.PerformanceCounter
 import java.util.*
 
 fun Pseudocode.traverse(
@@ -55,30 +56,37 @@ fun <D> Pseudocode.traverse(
     }
 }
 
-fun <I : ControlFlowInfo<*>> Pseudocode.collectData(
+val q1 = PerformanceCounter.create("collectData")
+val q2 = PerformanceCounter.create("collectDataFromSubgraph")
+
+fun <I : ControlFlowInfo<*, *>> Pseudocode.collectData(
         traversalOrder: TraversalOrder,
-        mergeEdges: (Instruction, Collection<I>) -> Edges<I>,
+        mergeEdges: (Instruction, Collection<I>, Edges<I>?) -> Edges<I>,
         updateEdge: (Instruction, Instruction, I) -> I,
         initialInfo: I
 ): Map<Instruction, Edges<I>> {
-    val edgesMap = LinkedHashMap<Instruction, Edges<I>>()
-    edgesMap.put(getStartInstruction(traversalOrder), Edges(initialInfo, initialInfo))
+    return q1.time {
+        val edgesMap = LinkedHashMap<Instruction, Edges<I>>()
+        edgesMap.put(getStartInstruction(traversalOrder), Edges(initialInfo, initialInfo))
 
-    val changed = BooleanArray(1)
-    changed[0] = true
-    while (changed[0]) {
-        changed[0] = false
-        collectDataFromSubgraph(
-                traversalOrder, edgesMap,
-                mergeEdges, updateEdge, Collections.emptyList<Instruction>(), changed, false)
+        val changed = BooleanArray(1)
+        changed[0] = true
+        while (changed[0]) {
+            changed[0] = false
+            q2.time {
+                collectDataFromSubgraph(
+                        traversalOrder, edgesMap,
+                        mergeEdges, updateEdge, Collections.emptyList<Instruction>(), changed, false)
+            }
+        }
+        edgesMap
     }
-    return edgesMap
 }
 
-private fun <I : ControlFlowInfo<*>> Pseudocode.collectDataFromSubgraph(
+private fun <I : ControlFlowInfo<*, *>> Pseudocode.collectDataFromSubgraph(
         traversalOrder: TraversalOrder,
         edgesMap: MutableMap<Instruction, Edges<I>>,
-        mergeEdges: (Instruction, Collection<I>) -> Edges<I>,
+        mergeEdges: (Instruction, Collection<I>, Edges<I>?) -> Edges<I>,
         updateEdge: (Instruction, Instruction, I) -> I,
         previousSubGraphInstructions: Collection<Instruction>,
         changed: BooleanArray,
@@ -118,7 +126,7 @@ private fun <I : ControlFlowInfo<*>> Pseudocode.collectDataFromSubgraph(
                         previousInstruction, instruction, previousData.outgoing))
             }
         }
-        val mergedData = mergeEdges(instruction, incomingEdgesData)
+        val mergedData = mergeEdges(instruction, incomingEdgesData, previousDataValue)
         updateEdgeDataForInstruction(instruction, previousDataValue, mergedData, edgesMap, changed)
     }
 }
@@ -138,11 +146,15 @@ private fun getPreviousIncludingSubGraphInstructions(
     return result
 }
 
-private fun <I : ControlFlowInfo<*>> updateEdgeDataForInstruction(
+val q = PerformanceCounter.create("xyz1")
+
+private fun <I : ControlFlowInfo<*, *>> updateEdgeDataForInstruction(
         instruction: Instruction, previousValue: Edges<I>?, newValue: Edges<I>?, edgesMap: MutableMap<Instruction, Edges<I>>, changed: BooleanArray) {
-    if (previousValue != newValue && newValue != null) {
-        changed[0] = true
-        edgesMap.put(instruction, newValue)
+    q.time {
+        if (previousValue != newValue && newValue != null) {
+            changed[0] = true
+            edgesMap.put(instruction, newValue)
+        }
     }
 }
 

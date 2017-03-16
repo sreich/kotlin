@@ -20,7 +20,10 @@ import com.google.common.collect.Maps
 import org.jetbrains.kotlin.cfg.pseudocode.Pseudocode
 import org.jetbrains.kotlin.cfg.pseudocode.PseudocodeUtil
 import org.jetbrains.kotlin.cfg.pseudocode.instructions.Instruction
-import org.jetbrains.kotlin.cfg.pseudocode.instructions.eval.*
+import org.jetbrains.kotlin.cfg.pseudocode.instructions.eval.MagicInstruction
+import org.jetbrains.kotlin.cfg.pseudocode.instructions.eval.MagicKind
+import org.jetbrains.kotlin.cfg.pseudocode.instructions.eval.ReadValueInstruction
+import org.jetbrains.kotlin.cfg.pseudocode.instructions.eval.WriteValueInstruction
 import org.jetbrains.kotlin.cfg.pseudocode.instructions.special.VariableDeclarationInstruction
 import org.jetbrains.kotlin.cfg.pseudocodeTraverser.Edges
 import org.jetbrains.kotlin.cfg.pseudocodeTraverser.TraversalOrder
@@ -28,7 +31,7 @@ import org.jetbrains.kotlin.descriptors.VariableDescriptor
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.BindingContextUtils.variableDescriptorForDeclaration
-import java.util.Collections
+import java.util.*
 
 class PseudocodeVariablesData(val pseudocode: Pseudocode, private val bindingContext: BindingContext) {
     private val pseudocodeVariableDataCollector: PseudocodeVariableDataCollector
@@ -90,11 +93,13 @@ class PseudocodeVariablesData(val pseudocode: Pseudocode, private val bindingCon
         val blockScopeVariableInfo = pseudocodeVariableDataCollector.blockScopeVariableInfo
 
         return pseudocodeVariableDataCollector.collectData(TraversalOrder.FORWARD, InitControlFlowInfo()) {
-            instruction: Instruction, incomingEdgesData: Collection<InitControlFlowInfo> ->
+            instruction: Instruction, incomingEdgesData: Collection<InitControlFlowInfo>, oldValue: Edges<InitControlFlowInfo>? ->
 
-            val enterInstructionData = mergeIncomingEdgesDataForInitializers(instruction, incomingEdgesData, blockScopeVariableInfo)
-            val exitInstructionData = addVariableInitStateFromCurrentInstructionIfAny(
-                    instruction, enterInstructionData, blockScopeVariableInfo)
+            val enterInstructionData = mergeIncomingEdgesDataForInitializers(instruction, incomingEdgesData, blockScopeVariableInfo, oldValue?.incoming)
+            val exitInstructionData =
+                    addVariableInitStateFromCurrentInstructionIfAny(
+                            instruction, enterInstructionData, blockScopeVariableInfo
+                    )
             Edges(enterInstructionData, exitInstructionData)
         }
     }
@@ -105,20 +110,20 @@ class PseudocodeVariablesData(val pseudocode: Pseudocode, private val bindingCon
             blockScopeVariableInfo: BlockScopeVariableInfo): InitControlFlowInfo {
         if (instruction is MagicInstruction) {
             if (instruction.kind === MagicKind.EXHAUSTIVE_WHEN_ELSE) {
-                val exitInstructionData = enterInstructionData.copy()
-                for ((key, value) in enterInstructionData) {
+                return enterInstructionData.entries.fold(enterInstructionData) {
+                    result, (key, value) ->
                     if (!value.definitelyInitialized()) {
-                        exitInstructionData.put(key, VariableControlFlowState.createInitializedExhaustively(value.isDeclared))
+                        result.plus(key, VariableControlFlowState.createInitializedExhaustively(value.isDeclared))
                     }
+                    else result
                 }
-                return exitInstructionData
             }
         }
         if (instruction !is WriteValueInstruction && instruction !is VariableDeclarationInstruction) {
             return enterInstructionData
         }
         val variable = PseudocodeUtil.extractVariableDescriptorIfAny(instruction, bindingContext) ?: return enterInstructionData
-        val exitInstructionData = enterInstructionData.copy()
+        var exitInstructionData = enterInstructionData
         if (instruction is WriteValueInstruction) {
             // if writing to already initialized object
             if (!PseudocodeUtil.isThisOrNoDispatchReceiver(instruction, bindingContext)) {
@@ -127,7 +132,7 @@ class PseudocodeVariablesData(val pseudocode: Pseudocode, private val bindingCon
 
             val enterInitState = enterInstructionData[variable]
             val initializationAtThisElement = VariableControlFlowState.create(instruction.element is KtProperty, enterInitState)
-            exitInstructionData.put(variable, initializationAtThisElement)
+            exitInstructionData = exitInstructionData.plus(variable, initializationAtThisElement, enterInitState)
         }
         else {
             // instruction instanceof VariableDeclarationInstruction
@@ -137,7 +142,7 @@ class PseudocodeVariablesData(val pseudocode: Pseudocode, private val bindingCon
             }
             if (!enterInitState.mayBeInitialized() || !enterInitState.isDeclared) {
                 val variableDeclarationInfo = VariableControlFlowState.create(enterInitState.initState, isDeclared = true)
-                exitInstructionData.put(variable, variableDeclarationInfo)
+                exitInstructionData = exitInstructionData.plus(variable, variableDeclarationInfo, enterInitState)
             }
         }
         return exitInstructionData
@@ -147,41 +152,42 @@ class PseudocodeVariablesData(val pseudocode: Pseudocode, private val bindingCon
 
     val variableUseStatusData: Map<Instruction, Edges<UseControlFlowInfo>>
         get() = pseudocodeVariableDataCollector.collectData(TraversalOrder.BACKWARD, UseControlFlowInfo()) {
-            instruction: Instruction, incomingEdgesData: Collection<UseControlFlowInfo> ->
+            instruction: Instruction, incomingEdgesData: Collection<UseControlFlowInfo>, oldValue: Edges<UseControlFlowInfo>? ->
             val enterResult: UseControlFlowInfo
 
             if (incomingEdgesData.size == 1) {
                 enterResult = incomingEdgesData.single()
             }
             else {
-                enterResult = UseControlFlowInfo()
-                for (edgeData in incomingEdgesData) {
-                    for ((variableDescriptor, variableUseState) in edgeData) {
-                        enterResult.put(variableDescriptor, variableUseState.merge(enterResult[variableDescriptor]))
+                enterResult = incomingEdgesData.fold(UseControlFlowInfo()) { result, edgeData ->
+                    edgeData.entries.fold(result) {
+                        subResult, (variableDescriptor, variableUseState) ->
+                        subResult.plus(variableDescriptor, variableUseState.merge(subResult[variableDescriptor]))
                     }
                 }
             }
+
             val variableDescriptor = PseudocodeUtil.extractVariableDescriptorFromReference(instruction, bindingContext)
             if (variableDescriptor == null || instruction !is ReadValueInstruction && instruction !is WriteValueInstruction) {
                 Edges(enterResult, enterResult)
             }
             else {
-                val exitResult = enterResult.copy()
-                if (instruction is ReadValueInstruction) {
-                    exitResult.put(variableDescriptor, VariableUseState.READ)
-                }
-                else {
-                    var variableUseState: VariableUseState? = enterResult[variableDescriptor]
-                    if (variableUseState == null) {
-                        variableUseState = VariableUseState.UNUSED
+                val exitResult =
+                    if (instruction is ReadValueInstruction) {
+                        enterResult.plus(variableDescriptor, VariableUseState.READ)
                     }
-                    when (variableUseState) {
-                        VariableUseState.UNUSED, VariableUseState.ONLY_WRITTEN_NEVER_READ ->
-                            exitResult.put(variableDescriptor, VariableUseState.ONLY_WRITTEN_NEVER_READ)
-                        VariableUseState.WRITTEN_AFTER_READ, VariableUseState.READ ->
-                            exitResult.put(variableDescriptor, VariableUseState.WRITTEN_AFTER_READ)
+                    else {
+                        var variableUseState: VariableUseState? = enterResult[variableDescriptor]
+                        if (variableUseState == null) {
+                            variableUseState = VariableUseState.UNUSED
+                        }
+                        when (variableUseState) {
+                            VariableUseState.UNUSED, VariableUseState.ONLY_WRITTEN_NEVER_READ ->
+                                enterResult.plus(variableDescriptor, VariableUseState.ONLY_WRITTEN_NEVER_READ)
+                            VariableUseState.WRITTEN_AFTER_READ, VariableUseState.READ ->
+                                enterResult.plus(variableDescriptor, VariableUseState.WRITTEN_AFTER_READ)
+                        }
                     }
-                }
                 Edges(enterResult, exitResult)
             }
         }
@@ -205,16 +211,16 @@ class PseudocodeVariablesData(val pseudocode: Pseudocode, private val bindingCon
         private fun mergeIncomingEdgesDataForInitializers(
                 instruction: Instruction,
                 incomingEdgesData: Collection<InitControlFlowInfo>,
-                blockScopeVariableInfo: BlockScopeVariableInfo
+                blockScopeVariableInfo: BlockScopeVariableInfo, incoming: InitControlFlowInfo?
         ): InitControlFlowInfo {
             if (incomingEdgesData.size == 1) return incomingEdgesData.single()
+            if (incomingEdgesData.size == 0) return InitControlFlowInfo()
             val variablesInScope = linkedSetOf<VariableDescriptor>()
             for (edgeData in incomingEdgesData) {
                 variablesInScope.addAll(edgeData.keys)
             }
 
-            val enterInstructionData = InitControlFlowInfo()
-            for (variable in variablesInScope) {
+            return variablesInScope.fold(incoming ?: InitControlFlowInfo()) { result, variable ->
                 var initState: InitState? = null
                 var isDeclared = true
                 for (edgeData in incomingEdgesData) {
@@ -228,9 +234,8 @@ class PseudocodeVariablesData(val pseudocode: Pseudocode, private val bindingCon
                 if (initState == null) {
                     throw AssertionError("An empty set of incoming edges data")
                 }
-                enterInstructionData.put(variable, VariableControlFlowState.create(initState, isDeclared))
+                result.plus(variable, VariableControlFlowState.create(initState, isDeclared))
             }
-            return enterInstructionData
         }
     }
 }
