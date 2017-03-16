@@ -39,7 +39,13 @@ Kotlin.hashCode = function (obj) {
         return 0;
     }
     var objType = typeof obj;
-    if ("object" == objType || "function" == objType) {
+    if ("object" == objType) {
+        if ("function" == typeof obj.hashCode) {
+            return obj.hashCode();
+        }
+        return getObjectHashCode(obj);
+    }
+    if ("function" == objType) {
         return getObjectHashCode(obj);
     }
     if ("number" == objType) {
@@ -48,9 +54,6 @@ Kotlin.hashCode = function (obj) {
     }
     if ("boolean" == objType) {
         return Number(obj)
-    }
-    if ("function" == typeof obj.hashCode) {
-        return obj.hashCode();
     }
 
     var str = String(obj);

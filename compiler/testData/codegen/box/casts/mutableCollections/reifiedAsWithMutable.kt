@@ -34,7 +34,7 @@ inline fun <reified T> reifiedAsSucceeds(x: Any, operation: String) {
         x as T        
     }
     catch (e: Throwable) {
-        throw AssertionError("$operation: should not throw exceptions, got $e")
+        fail("$operation: should not throw exceptions, got $e")
     }    
 }
 
@@ -46,9 +46,9 @@ inline fun <reified T> reifiedAsFailsWithCCE(x: Any, operation: String) {
         return
     }
     catch (e: Throwable) {
-        throw AssertionError("$operation: should throw ClassCastException, got $e")
+        fail("$operation: should throw ClassCastException, got $e")
     }
-    throw AssertionError("$operation: should fail with CCE, no exception thrown")
+    fail("$operation: should fail with CCE, no exception thrown")
 }
 
 fun box(): String {

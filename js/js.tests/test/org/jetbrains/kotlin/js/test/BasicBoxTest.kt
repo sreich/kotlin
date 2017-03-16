@@ -23,6 +23,7 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiManager
 import jdk.nashorn.api.scripting.NashornScriptEngineFactory
 import jdk.nashorn.api.scripting.ScriptObjectMirror
+import jdk.nashorn.internal.runtime.ScriptRuntime
 import junit.framework.TestCase
 import org.jetbrains.kotlin.cli.common.messages.AnalyzerWithCompilerReport
 import org.jetbrains.kotlin.cli.common.messages.MessageRenderer
@@ -162,43 +163,57 @@ abstract class BasicBoxTest(
     private fun runUsingNashorn(files: List<String>, checker: RhinoFunctionResultChecker, mainModuleName: String, testPackageName: String?, testFunction: String, s3: String, withModuleSystem: Boolean, modules: Map<String, TestModule>): Unit {
         val engine = getEngine()
 
-        for (file in files) {
-            engine.eval("load('" + File(file).path + "');")
-            //engine.eval(new FileReader(file));
-        }
+        val globalObject = engine.eval("this") as ScriptObjectMirror
+        val before = globalObject.entries.toSet()
 
-        val testModule =
-                when {
-                    withModuleSystem ->
-                        engine.eval(BasicBoxTest.KOTLIN_TEST_INTERNAL + ".require('" + mainModuleName + "')") as ScriptObjectMirror
-                    else ->
-                        engine.get(mainModuleName) as ScriptObjectMirror
-                }
+//        println("before = $before")
 
-        val testPackage =
-                when {
-                    testPackageName === null ->
-                        testModule
-                    testPackageName.contains(".") ->
-                        testPackageName.split(".").fold(testModule) { p, part -> p[part] as ScriptObjectMirror }
-                    else ->
-                        testModule[testPackageName]!!
-                }
-
-        val actual = (engine as Invocable).invokeMethod(testPackage, testFunction)
-//        val actual = engine.eval(checker.functionCallString())
-
-//        modules.removeMember(BasicTest.TEST_MODULE)
-        TestCase.assertEquals("OK", actual)
-
-        modules.keys.forEach {
-            engine.eval("this['$it'] = void 0")
-        }
-
-        if (withModuleSystem) {
-            listOf("emulatedModules", "module", "require", "\$kotlin_test_internal$", "define").forEach {
-                engine.eval("this['$it'] = void 0")
+        try {
+            for (file in files) {
+                engine.eval("load('" + File(file).path + "');")
+                //engine.eval(new FileReader(file));
             }
+
+            val testModule =
+                    when {
+                        withModuleSystem ->
+                            engine.eval(BasicBoxTest.KOTLIN_TEST_INTERNAL + ".require('" + mainModuleName + "')") as ScriptObjectMirror
+                        else ->
+                            engine.get(mainModuleName) as ScriptObjectMirror
+                    }
+
+            val testPackage =
+                    when {
+                        testPackageName === null ->
+                            testModule
+                        testPackageName.contains(".") ->
+                            testPackageName.split(".").fold(testModule) { p, part -> p[part] as ScriptObjectMirror }
+                        else ->
+                            testModule[testPackageName]!!
+                    }
+
+            val actual = (engine as Invocable).invokeMethod(testPackage, testFunction)
+            // val actual = engine.eval(checker.functionCallString())
+
+            TestCase.assertEquals("OK", actual)
+        }
+        finally {
+            val diff = globalObject.entries - before
+//            println("diff = $diff")
+            diff.forEach {
+                globalObject.put(it.key, ScriptRuntime.UNDEFINED)
+//                engine.eval("this['${it.key}'] = void 0")
+            }
+
+//        modules.keys.forEach {
+//            engine.eval("this['$it'] = void 0")
+//        }
+//
+//        if (withModuleSystem) {
+//            listOf("emulatedModules", "module", "require", "\$kotlin_test_internal$", "define", "result").forEach {
+//                engine.eval("delete this['$it']; this['$it'] = void 0")
+//            }
+//        }
         }
     }
 

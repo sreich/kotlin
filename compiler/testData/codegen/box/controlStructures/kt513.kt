@@ -12,6 +12,9 @@ class A() {
 
 infix fun <T> ArrayList<T>.add2(el: T) = add(el)
 
+fun println(message: Any?) {
+}
+
 fun box() : String{
     var list = ArrayList<Int>()
     for (i in 1..10) {
