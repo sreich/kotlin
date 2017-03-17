@@ -2,7 +2,7 @@
 description 'Kotlin Script Runtime'
 
 dependencies {
-    compile project(':kotlin-runtime')
+    compileOnly project(':kotlin-stdlib')
 }
 
 sourceSets {
