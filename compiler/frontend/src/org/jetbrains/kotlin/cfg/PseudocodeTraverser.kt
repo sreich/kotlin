@@ -69,16 +69,14 @@ fun <I : ControlFlowInfo<*, *>> Pseudocode.collectData(
         val edgesMap = LinkedHashMap<Instruction, Edges<I>>()
         edgesMap.put(getStartInstruction(traversalOrder), Edges(initialInfo, initialInfo))
 
-        val changed = BooleanArray(1)
-        changed[0] = true
-        while (changed[0]) {
-            changed[0] = false
+        val changed = mutableMapOf<Instruction, Boolean>()
+        do {
             q2.time {
                 collectDataFromSubgraph(
                         traversalOrder, edgesMap,
                         mergeEdges, updateEdge, Collections.emptyList<Instruction>(), changed, false)
             }
-        }
+        } while (changed.any { it.value })
         edgesMap
     }
 }
@@ -89,7 +87,7 @@ private fun <I : ControlFlowInfo<*, *>> Pseudocode.collectDataFromSubgraph(
         mergeEdges: (Instruction, Collection<I>, Edges<I>?) -> Edges<I>,
         updateEdge: (Instruction, Instruction, I) -> I,
         previousSubGraphInstructions: Collection<Instruction>,
-        changed: BooleanArray,
+        changed: MutableMap<Instruction, Boolean>,
         isLocal: Boolean
 ) {
     val instructions = getInstructions(traversalOrder)
@@ -115,6 +113,12 @@ private fun <I : ControlFlowInfo<*, *>> Pseudocode.collectDataFromSubgraph(
             updateEdgeDataForInstruction(instruction, previousValue, updatedValue, edgesMap, changed)
             continue
         }
+
+        if (previousInstructions.all { changed[it] == false }) {
+            changed[instruction] = false
+            continue
+        }
+
         val previousDataValue = edgesMap[instruction]
 
         val incomingEdgesData = HashSet<I>()
@@ -149,11 +153,14 @@ private fun getPreviousIncludingSubGraphInstructions(
 val q = PerformanceCounter.create("xyz1")
 
 private fun <I : ControlFlowInfo<*, *>> updateEdgeDataForInstruction(
-        instruction: Instruction, previousValue: Edges<I>?, newValue: Edges<I>?, edgesMap: MutableMap<Instruction, Edges<I>>, changed: BooleanArray) {
+        instruction: Instruction, previousValue: Edges<I>?, newValue: Edges<I>?, edgesMap: MutableMap<Instruction, Edges<I>>, changed: MutableMap<Instruction, Boolean>) {
     q.time {
         if (previousValue != newValue && newValue != null) {
-            changed[0] = true
+            changed[instruction] = true
             edgesMap.put(instruction, newValue)
+        }
+        else {
+            changed[instruction] = false
         }
     }
 }
