@@ -93,7 +93,6 @@ object KotlinCompileDaemon {
         log.info("Kotlin compiler daemon version " + (loadVersionFromResource() ?: "<unknown>"))
         log.info("daemon JVM args: " + ManagementFactory.getRuntimeMXBean().inputArguments.joinToString(" "))
         log.info("daemon args: " + args.joinToString(" "))
-        log.info("daemon process name: " + ManagementFactory.getRuntimeMXBean().name)
 
         val compilerId = CompilerId()
         val daemonOptions = DaemonOptions()
