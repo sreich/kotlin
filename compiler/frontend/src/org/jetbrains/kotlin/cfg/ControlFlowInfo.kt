@@ -17,27 +17,32 @@
 package org.jetbrains.kotlin.cfg
 
 import org.jetbrains.kotlin.descriptors.VariableDescriptor
-import java.util.*
+import org.pcollections.HashTreePMap
+import org.pcollections.PMap
 
-open class ControlFlowInfo<D> internal constructor(protected val map: MutableMap<VariableDescriptor, D> = hashMapOf()) :
-        MutableMap<VariableDescriptor, D> by map {
-    open fun copy() = ControlFlowInfo(HashMap(map))
+abstract class ControlFlowInfo<S : ControlFlowInfo<S, D>, D> internal constructor(protected val map: PMap<VariableDescriptor, D> = HashTreePMap.empty()) :
+        PMap<VariableDescriptor, D> by map {
+    abstract protected fun copy(newMap: PMap<VariableDescriptor, D>): S
 
-    fun retainAll(predicate: (VariableDescriptor) -> Boolean): ControlFlowInfo<D> {
-        map.keys.retainAll(predicate)
-        return this
+    override fun plus(key: VariableDescriptor, value: D): S = plus(key, value, this[key])
+    fun plus(key: VariableDescriptor, value: D, oldValue: D?): S {
+        @Suppress("UNCHECKED_CAST")
+        if (value == oldValue) return this as S
+        return copy(map.plus(key, value))
     }
 
-    override fun equals(other: Any?) = map == (other as? ControlFlowInfo<*>)?.map
+    fun retainAll(predicate: (VariableDescriptor) -> Boolean): S = copy(map.minusAll(map.keys.filterNot(predicate)))
+
+    override fun equals(other: Any?) = map == (other as? ControlFlowInfo<*, *>)?.map
 
     override fun hashCode() = map.hashCode()
 
     override fun toString() = map.toString()
 }
 
-class InitControlFlowInfo(map: MutableMap<VariableDescriptor, VariableControlFlowState> = hashMapOf()) :
-        ControlFlowInfo<VariableControlFlowState>(map) {
-    override fun copy() = InitControlFlowInfo(HashMap(map))
+class InitControlFlowInfo(map: PMap<VariableDescriptor, VariableControlFlowState> = HashTreePMap.empty()) :
+        ControlFlowInfo<InitControlFlowInfo, VariableControlFlowState>(map) {
+    override fun copy(newMap: PMap<VariableDescriptor, VariableControlFlowState>) = InitControlFlowInfo(newMap)
 
     // this = output of EXHAUSTIVE_WHEN_ELSE instruction
     // merge = input of MergeInstruction
@@ -53,9 +58,9 @@ class InitControlFlowInfo(map: MutableMap<VariableDescriptor, VariableControlFlo
     }
 }
 
-class UseControlFlowInfo(map: MutableMap<VariableDescriptor, VariableUseState> = hashMapOf()) :
-        ControlFlowInfo<VariableUseState>(map) {
-    override fun copy() = UseControlFlowInfo(HashMap(map))
+class UseControlFlowInfo(map: PMap<VariableDescriptor, VariableUseState> = HashTreePMap.empty()) :
+        ControlFlowInfo<UseControlFlowInfo, VariableUseState>(map) {
+    override fun copy(newMap: PMap<VariableDescriptor, VariableUseState>) = UseControlFlowInfo(newMap)
 }
 
 enum class InitState(private val s: String) {
