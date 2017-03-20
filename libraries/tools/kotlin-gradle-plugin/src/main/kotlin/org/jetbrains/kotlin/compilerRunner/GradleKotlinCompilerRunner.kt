@@ -287,7 +287,6 @@ internal class GradleCompilerRunner(private val project: Project) : KotlinCompil
         log.debug("Finished executing kotlin compiler using $strategy strategy")
     }
 
-    @Synchronized
     override fun getDaemonConnection(environment: GradleCompilerEnvironment): CompileServiceSession? {
         val compilerId = CompilerId.makeCompilerId(environment.compilerClasspath)
         val clientIsAliveFlagFile = getOrCreateClientFlagFile(project)
@@ -299,7 +298,10 @@ internal class GradleCompilerRunner(private val project: Project) : KotlinCompil
         // created once per gradle instance
         // when gradle daemon dies, kotlin daemon should die too
         // however kotlin daemon (if it idles enough) can die before gradle daemon dies
+        @Volatile
         private var clientIsAliveFlagFile: File? = null
+
+        @Synchronized
         private fun getOrCreateClientFlagFile(project: Project): File {
             val log = project.logger
             if (clientIsAliveFlagFile == null || !clientIsAliveFlagFile!!.exists()) {
@@ -320,7 +322,10 @@ internal class GradleCompilerRunner(private val project: Project) : KotlinCompil
         }
 
         // session is created per build
+        @Volatile
         private var sessionFlagFile: File? = null
+
+        @Synchronized
         private fun getOrCreateSessionFlagFile(project: Project): File {
             val log = project.logger
             if (sessionFlagFile == null || !sessionFlagFile!!.exists()) {
