@@ -9,4 +9,5 @@ public final class A {
 public final class Kt513Kt {
     public final static method add2(@org.jetbrains.annotations.NotNull p0: java.util.ArrayList, p1: java.lang.Object): boolean
     public final static @org.jetbrains.annotations.NotNull method box(): java.lang.String
+    public final static method println(@org.jetbrains.annotations.Nullable p0: java.lang.Object): void
 }

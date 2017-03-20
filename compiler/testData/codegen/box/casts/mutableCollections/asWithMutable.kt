@@ -37,9 +37,9 @@ inline fun asFailsWithCCE(operation: String, block: () -> Unit) {
         return
     }
     catch (e: Throwable) {
-        fail("$operation: should throw ClassCastException, got $e")
+        throw AssertionError("$operation: should throw ClassCastException, got $e")
     }
-    fail("$operation: should throw ClassCastException, no exception thrown")
+    throw AssertionError("$operation: should throw ClassCastException, no exception thrown")
 }
 
 inline fun asSucceeds(operation: String, block: () -> Unit) {
@@ -47,7 +47,7 @@ inline fun asSucceeds(operation: String, block: () -> Unit) {
         block()
     }
     catch (e: Throwable) {
-        fail("$operation: should not throw exceptions, got $e")
+        throw AssertionError("$operation: should not throw exceptions, got $e")
     }
 }
 
