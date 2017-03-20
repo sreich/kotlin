@@ -103,7 +103,9 @@ internal class KotlinGradleBuildServices private constructor(gradle: Gradle): Bu
 
             // it is expected that only one session file per build exists
             // afaik is is not possible to run multiple gradle builds in one project since gradle locks some dirs
-            // todo: sanity checks?
+            if (sessionFiles.size > 1) {
+                log.warn("w: Detected multiple Kotlin daemon sessions at ${sessionsDir.relativeToRoot(rootProject)}")
+            }
             for (file in sessionFiles) {
                 file.delete()
                 log.kotlinDebug { DELETED_SESSION_FILE_PREFIX + file.relativeToRoot(rootProject) }
