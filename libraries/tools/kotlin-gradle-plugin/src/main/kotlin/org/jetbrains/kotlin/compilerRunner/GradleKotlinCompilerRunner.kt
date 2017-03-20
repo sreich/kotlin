@@ -16,10 +16,8 @@
 
 package org.jetbrains.kotlin.compilerRunner
 
-import groovy.lang.Closure
 import net.rubygrapefruit.platform.Native
 import net.rubygrapefruit.platform.ProcessLauncher
-import org.gradle.BuildResult
 import org.gradle.api.Project
 import org.jetbrains.kotlin.cli.common.ExitCode
 import org.jetbrains.kotlin.cli.common.arguments.CommonCompilerArguments
