@@ -24,7 +24,7 @@ import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocation
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.config.CompilerSettings
 import org.jetbrains.kotlin.config.additionalArgumentsAsList
-import org.jetbrains.kotlin.daemon.client.DaemonConnection
+import org.jetbrains.kotlin.daemon.client.CompileServiceSession
 import org.jetbrains.kotlin.daemon.client.KotlinCompilerClient
 import org.jetbrains.kotlin.daemon.common.*
 import org.jetbrains.kotlin.jps.build.KotlinBuilder
@@ -50,15 +50,15 @@ class JpsKotlinCompilerRunner : KotlinCompilerRunner<JpsCompilerEnvironment>() {
 
     companion object {
         @Volatile
-        private var _jpsDaemonConnection: DaemonConnection? = null
+        private var _jpsCompileServiceSession: CompileServiceSession? = null
 
         @Synchronized
-        private fun getOrCreateDaemonConnection(newConnection: ()->DaemonConnection?): DaemonConnection? {
-            if (_jpsDaemonConnection == null) {
-                _jpsDaemonConnection = newConnection()
+        private fun getOrCreateDaemonConnection(newConnection: ()-> CompileServiceSession?): CompileServiceSession? {
+            if (_jpsCompileServiceSession == null) {
+                _jpsCompileServiceSession = newConnection()
             }
 
-            return _jpsDaemonConnection
+            return _jpsCompileServiceSession
         }
     }
 
@@ -229,7 +229,7 @@ class JpsKotlinCompilerRunner : KotlinCompilerRunner<JpsCompilerEnvironment>() {
         }
     }
 
-    override fun getDaemonConnection(environment: JpsCompilerEnvironment): DaemonConnection? =
+    override fun getDaemonConnection(environment: JpsCompilerEnvironment): CompileServiceSession? =
             getOrCreateDaemonConnection {
                 val libPath = CompilerRunnerUtil.getLibPath(environment.kotlinPaths, environment.messageCollector)
                 val compilerPath = File(libPath, "kotlin-compiler.jar")

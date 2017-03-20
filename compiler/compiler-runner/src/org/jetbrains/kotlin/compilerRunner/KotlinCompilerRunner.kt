@@ -23,7 +23,7 @@ import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.ERROR
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.cli.common.messages.MessageCollectorUtil
-import org.jetbrains.kotlin.daemon.client.DaemonConnection
+import org.jetbrains.kotlin.daemon.client.CompileServiceSession
 import org.jetbrains.kotlin.daemon.client.CompilationServices
 import org.jetbrains.kotlin.daemon.client.DaemonReportMessage
 import org.jetbrains.kotlin.daemon.client.DaemonReportingTargets
@@ -55,7 +55,7 @@ abstract class KotlinCompilerRunner<in Env : CompilerEnvironment> {
 
     protected abstract val log: KotlinLogger
 
-    protected abstract fun getDaemonConnection(environment: Env): DaemonConnection?
+    protected abstract fun getDaemonConnection(environment: Env): CompileServiceSession?
 
     @Synchronized
     protected fun newDaemonConnection(
@@ -64,7 +64,7 @@ abstract class KotlinCompilerRunner<in Env : CompilerEnvironment> {
             sessionAliveFlagFile: File,
             environment: Env,
             daemonOptions: DaemonOptions = configureDaemonOptions()
-    ): DaemonConnection? {
+    ): CompileServiceSession? {
         val daemonJVMOptions = configureDaemonJVMOptions(inheritMemoryLimits = true, inheritAdditionalProperties = true)
 
         val daemonReportMessages = ArrayList<DaemonReportMessage>()

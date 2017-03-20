@@ -28,7 +28,7 @@ import org.jetbrains.kotlin.cli.common.arguments.K2JVMCompilerArguments
 import org.jetbrains.kotlin.cli.common.arguments.K2MetadataCompilerArguments
 import org.jetbrains.kotlin.com.intellij.openapi.util.io.FileUtil
 import org.jetbrains.kotlin.config.Services
-import org.jetbrains.kotlin.daemon.client.DaemonConnection
+import org.jetbrains.kotlin.daemon.client.CompileServiceSession
 import org.jetbrains.kotlin.daemon.common.*
 import org.jetbrains.kotlin.gradle.plugin.ParentLastURLClassLoader
 import org.jetbrains.kotlin.gradle.plugin.kotlinDebug
@@ -288,7 +288,7 @@ internal class GradleCompilerRunner(private val project: Project) : KotlinCompil
     }
 
     @Synchronized
-    override fun getDaemonConnection(environment: GradleCompilerEnvironment): DaemonConnection? {
+    override fun getDaemonConnection(environment: GradleCompilerEnvironment): CompileServiceSession? {
         val compilerId = CompilerId.makeCompilerId(environment.compilerClasspath)
         val clientIsAliveFlagFile = getOrCreateClientFlagFile(project)
         val sessionIsAliveFlagFile = getOrCreateSessionFlagFile(project)
