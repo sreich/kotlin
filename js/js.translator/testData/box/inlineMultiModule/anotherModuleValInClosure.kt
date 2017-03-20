@@ -11,6 +11,25 @@ public fun log(s: String): String {
     return LOG
 }
 
+inline fun foo() {
+    try {
+        log("hello")
+    }
+    catch (e: dynamic) {
+        bar()
+    }
+}
+
+var a = true
+
+inline fun bar() {
+    run {
+        log("bar1")
+        if (LOG === null) return
+        log("bar2")
+    }
+}
+
 
 // MODULE: main(lib)
 // FILE: main.kt
@@ -24,6 +43,8 @@ internal fun test(s: String): String = log(s + ";")
 fun box(): String {
     assertEquals("a;", test("a"))
     assertEquals("a;b;", test("b"))
+
+    foo()
 
     return "OK"
 }

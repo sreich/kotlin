@@ -16,7 +16,7 @@
 
 package org.jetbrains.kotlin.js.backend.ast
 
-import java.util.Stack
+import java.util.*
 
 class JsObjectScope(parent: JsScope, description: String) : JsScope(parent, description)
 
@@ -24,57 +24,10 @@ object JsDynamicScope : JsScope(null, "Scope for dynamic declarations") {
     override fun doCreateName(name: String) = JsName(this, name, false)
 }
 
-open class JsFunctionScope(parent: JsScope, description: String) : JsScope(parent, description) {
-
-    private val labelScopes = Stack<LabelScope>()
-    private val topLabelScope: LabelScope?
-        get() = if (labelScopes.isNotEmpty()) labelScopes.peek() else null
-
+open class JsFunctionScope(parent: JsScope, description: String) : JsDeclarationScope(parent, description) {
     override fun hasOwnName(name: String): Boolean = RESERVED_WORDS.contains(name) || super.hasOwnName(name)
 
     open fun declareNameUnsafe(identifier: String): JsName = super.declareName(identifier)
-
-    open fun enterLabel(label: String): JsName {
-        val scope = LabelScope(topLabelScope, label)
-        labelScopes.push(scope)
-        return scope.labelName
-    }
-
-    open fun exitLabel() {
-        assert(labelScopes.isNotEmpty()) { "No scope to exit from" }
-        labelScopes.pop()
-    }
-
-    open fun findLabel(label: String): JsName? =
-            topLabelScope?.findName(label)
-
-    private inner class LabelScope(parent: LabelScope?, val ident: String) : JsScope(parent, "Label scope for $ident") {
-        val labelName: JsName
-
-        init {
-            val freshIdent = when {
-                ident in RESERVED_WORDS -> getFreshIdent(ident)
-                parent != null -> parent.getFreshIdent(ident)
-                else -> ident
-            }
-
-            labelName = JsName(this@JsFunctionScope, freshIdent, false)
-        }
-
-        override fun findOwnName(name: String): JsName? =
-                if (name == ident) labelName else null
-
-        /**
-         * Safe call is necessary, because hasOwnName can be called
-         * in constructor before labelName is initialized (see KT-4394)
-         */
-        @Suppress("UNNECESSARY_SAFE_CALL")
-        override fun hasOwnName(name: String): Boolean =
-                name in RESERVED_WORDS
-                || name == ident
-                || name == labelName?.ident
-                || parent?.hasOwnName(name) ?: false
-    }
 
     companion object {
         val RESERVED_WORDS: Set<String> = setOf(
@@ -105,6 +58,56 @@ open class JsFunctionScope(parent: JsScope, description: String) : JsScope(paren
                 "Kotlin"
         )
     }
+}
+
+open class JsDeclarationScope(parent: JsScope, description: String, useParentScopeStack: Boolean = false) : JsScope(parent, description) {
+    private val labelScopes: Stack<LabelScope> =
+            if (parent is JsDeclarationScope && useParentScopeStack) parent.labelScopes else Stack<LabelScope>()
+    private val topLabelScope: LabelScope?
+        get() = if (labelScopes.isNotEmpty()) labelScopes.peek() else null
+
+    open fun enterLabel(label: String): JsName {
+        val scope = LabelScope(topLabelScope, label)
+        labelScopes.push(scope)
+        return scope.labelName
+    }
+
+    open fun exitLabel() {
+        assert(labelScopes.isNotEmpty()) { "No scope to exit from" }
+        labelScopes.pop()
+    }
+
+    open fun findLabel(label: String): JsName? =
+            topLabelScope?.findName(label)
+
+    private inner class LabelScope(parent: LabelScope?, val ident: String) : JsScope(parent, "Label scope for $ident") {
+        val labelName: JsName
+
+        init {
+            val freshIdent = when {
+                ident in JsFunctionScope.RESERVED_WORDS -> getFreshIdent(ident)
+                parent != null -> parent.getFreshIdent(ident)
+                else -> ident
+            }
+
+            labelName = JsName(this@JsDeclarationScope, freshIdent, false)
+        }
+
+        override fun findOwnName(name: String): JsName? =
+                if (name == ident) labelName else null
+
+        /**
+         * Safe call is necessary, because hasOwnName can be called
+         * in constructor before labelName is initialized (see KT-4394)
+         */
+        @Suppress("UNNECESSARY_SAFE_CALL")
+        override fun hasOwnName(name: String): Boolean =
+                name in JsFunctionScope.RESERVED_WORDS
+                || name == ident
+                || name == labelName?.ident
+                || parent?.hasOwnName(name) ?: false
+    }
+
 }
 
 class DelegatingJsFunctionScopeWithTemporaryParent(
