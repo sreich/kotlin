@@ -323,6 +323,7 @@ internal class GradleCompilerRunner(private val project: Project) : KotlinCompil
         @Volatile
         private var sessionFlagFile: File? = null
 
+        // session files are deleted at org.jetbrains.kotlin.gradle.plugin.KotlinGradleBuildServices.buildFinished
         @Synchronized
         private fun getOrCreateSessionFlagFile(project: Project): File {
             val log = project.logger
