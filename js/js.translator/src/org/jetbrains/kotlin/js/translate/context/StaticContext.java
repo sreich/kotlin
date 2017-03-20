@@ -214,7 +214,7 @@ public final class StaticContext {
     }
 
     @Nullable
-    private String getTag(@NotNull DeclarationDescriptor descriptor) {
+    public String getTag(@NotNull DeclarationDescriptor descriptor) {
         String tag;
         if (!tagCache.containsKey(descriptor)) {
             tag = SignatureUtilsKt.generateSignature(descriptor);
