@@ -50,5 +50,3 @@ class IrBuiltinsPackageFragmentDescriptorImpl(
         visitor.visitPackageFragmentDescriptor(this, null)
     }
 }
-
-
