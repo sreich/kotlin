@@ -65,6 +65,9 @@ public class K2JVMCompileMojo extends KotlinCompileMojoBase<K2JVMCompilerArgumen
     @Parameter(property = "kotlin.compiler.scriptTemplates", required = false, readonly = false)
     protected List<String> scriptTemplates;
 
+    @Parameter(property = "kotlin.compiler.javaParameters", required = false, readonly = false)
+    protected boolean javaParameters;
+
     @Override
     protected List<String> getRelatedSourceRoots(MavenProject project) {
         return project.getCompileSourceRoots();
@@ -106,7 +109,9 @@ public class K2JVMCompileMojo extends KotlinCompileMojoBase<K2JVMCompilerArgumen
 
         // don't include runtime, it should be in maven dependencies
         arguments.noStdlib = true;
+        arguments.javaParameters = this.javaParameters;
 
+        //noinspection deprecation
         if (module != null || testModule != null) {
             getLog().warn("Parameters module and testModule are deprecated and ignored, they will be removed in further release.");
         }
