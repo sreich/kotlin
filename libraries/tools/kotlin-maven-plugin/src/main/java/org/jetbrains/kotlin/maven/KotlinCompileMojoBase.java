@@ -412,7 +412,8 @@ public abstract class KotlinCompileMojoBase<A extends CommonCompilerArguments> e
             if (source.exists()) {
                 sources.add(source.getPath());
             }
-            else {
+            // unfortunately there is no good way to detect generated sources directory so we simply keep hardcoded value
+            else if (!source.getPath().contains("generated-sources")) {
                 getLog().warn("Source root doesn't exist: " + source);
             }
         }
