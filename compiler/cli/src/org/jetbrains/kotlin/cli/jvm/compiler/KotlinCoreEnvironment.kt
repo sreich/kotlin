@@ -22,9 +22,7 @@ import com.intellij.codeInsight.ExternalAnnotationsManager
 import com.intellij.codeInsight.InferredAnnotationsManager
 import com.intellij.codeInsight.runner.JavaMainMethodProvider
 import com.intellij.core.CoreApplicationEnvironment
-import com.intellij.core.CoreJavaFileManager
 import com.intellij.core.JavaCoreApplicationEnvironment
-import com.intellij.core.JavaCoreProjectEnvironment
 import com.intellij.lang.MetaLanguage
 import com.intellij.lang.java.JavaParserDefinition
 import com.intellij.mock.MockApplication
@@ -115,15 +113,9 @@ class KotlinCoreEnvironment private constructor(
         configuration: CompilerConfiguration
 ) {
 
-    private val projectEnvironment: JavaCoreProjectEnvironment = object : KotlinCoreProjectEnvironment(parentDisposable, applicationEnvironment) {
-        override fun preregisterServices() {
-            registerProjectExtensionPoints(Extensions.getArea(project))
-        }
-
-        override fun registerJavaPsiFacade() {
+    private val projectEnvironment: KotlinCoreProjectEnvironment = object : KotlinCoreProjectEnvironment(parentDisposable, applicationEnvironment) {
+        init {
             with (project) {
-                // registerService(CoreJavaFileManager::class.java, ServiceManager.getService(this, JavaFileManager::class.java) as CoreJavaFileManager)
-
                 val cliLightClassGenerationSupport = CliLightClassGenerationSupport(this)
                 registerService(LightClassGenerationSupport::class.java, cliLightClassGenerationSupport)
                 registerService(CliLightClassGenerationSupport::class.java, cliLightClassGenerationSupport)
@@ -138,8 +130,10 @@ class KotlinCoreEnvironment private constructor(
                 area.getExtensionPoint(PsiElementFinder.EP_NAME).registerExtension(
                         PsiElementFinderImpl(this, ServiceManager.getService(this, JavaFileManager::class.java)))
             }
+        }
 
-            super.registerJavaPsiFacade()
+        override fun preregisterServices() {
+            registerProjectExtensionPoints(Extensions.getArea(project))
         }
     }
     private val sourceFiles = ArrayList<KtFile>()
@@ -484,7 +478,7 @@ class KotlinCoreEnvironment private constructor(
         }
 
         // made public for Upsource
-        @JvmStatic fun registerProjectServices(projectEnvironment: JavaCoreProjectEnvironment) {
+        @JvmStatic fun registerProjectServices(projectEnvironment: KotlinCoreProjectEnvironment) {
             with (projectEnvironment.project) {
                 val kotlinScriptDefinitionProvider = KotlinScriptDefinitionProvider()
                 registerService(KotlinScriptDefinitionProvider::class.java, kotlinScriptDefinitionProvider)
@@ -494,7 +488,7 @@ class KotlinCoreEnvironment private constructor(
             }
         }
 
-        private fun registerProjectServicesForCLI(projectEnvironment: JavaCoreProjectEnvironment) {
+        private fun registerProjectServicesForCLI(projectEnvironment: KotlinCoreProjectEnvironment) {
             /**
              * Note that Kapt may restart code analysis process, and CLI services should be aware of that.
              * Use PsiManager.getModificationTracker() to ensure that all the data you cached is still valid.
