@@ -16,14 +16,10 @@
 
 package org.jetbrains.kotlin.cli.jvm.compiler
 
-import com.intellij.core.CoreJavaFileManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiClassOwner
-import com.intellij.psi.PsiManager
-import com.intellij.psi.PsiPackage
+import com.intellij.psi.*
 import com.intellij.psi.impl.file.PsiPackageImpl
 import com.intellij.psi.search.GlobalSearchScope
 import org.jetbrains.kotlin.cli.jvm.index.JavaRoot
@@ -35,7 +31,7 @@ import org.jetbrains.kotlin.util.PerformanceCounter
 import java.util.*
 import kotlin.properties.Delegates
 
-class KotlinCliJavaFileManagerImpl(private val myPsiManager: PsiManager) : CoreJavaFileManager(myPsiManager), KotlinCliJavaFileManager {
+class KotlinCliJavaFileManagerImpl(private val myPsiManager: PsiManager) : KotlinCliJavaFileManager {
     private val perfCounter = PerformanceCounter.create("Find Java class")
     private var index: JvmDependenciesIndex by Delegates.notNull()
     private val allScope = GlobalSearchScope.allScope(myPsiManager.project)
@@ -62,10 +58,18 @@ class KotlinCliJavaFileManagerImpl(private val myPsiManager: PsiManager) : CoreJ
         // Below, we start by looking for the top level class "e" in the package "a.b.c.d" first, then for the class "d.e" in the package
         // "a.b.c", and so on, until we find something. Most classes are top level, so most of the times the search ends quickly
 
-        var classId = qName.toSafeTopLevelClassId() ?: return super.findClass(qName, scope)
+        forEachClassId(qName) { classId ->
+            findClass(classId, scope)?.let { return it }
+        }
+
+        return null
+    }
+
+    private inline fun forEachClassId(fqName: String, block: (ClassId) -> Unit) {
+        var classId = fqName.toSafeTopLevelClassId() ?: return
 
         while (true) {
-            findClass(classId, scope)?.let { return it }
+            block(classId)
 
             val packageFqName = classId.packageFqName
             if (packageFqName.isRoot) break
@@ -76,30 +80,27 @@ class KotlinCliJavaFileManagerImpl(private val myPsiManager: PsiManager) : CoreJ
                     false
             )
         }
-
-        return super.findClass(qName, scope)
     }
 
     override fun findClasses(qName: String, scope: GlobalSearchScope): Array<PsiClass> {
         return perfCounter.time {
-            val classIdAsTopLevelClass = qName.toSafeTopLevelClassId() ?: return@time super.findClasses(qName, scope)
-
-            val result = ArrayList<PsiClass>()
-            val classNameWithInnerClasses = classIdAsTopLevelClass.relativeClassName.asString()
-            index.traverseDirectoriesInPackage(classIdAsTopLevelClass.packageFqName) { dir, rootType ->
-                val psiClass = findClassGivenPackage(scope, dir, classNameWithInnerClasses, rootType)
-                if (psiClass != null) {
-                    result.add(psiClass)
+            val result = ArrayList<PsiClass>(1)
+            forEachClassId(qName) { classId ->
+                val relativeClassName = classId.relativeClassName.asString()
+                index.traverseDirectoriesInPackage(classId.packageFqName) { dir, rootType ->
+                    val psiClass = findClassGivenPackage(scope, dir, relativeClassName, rootType)
+                    if (psiClass != null) {
+                        result.add(psiClass)
+                    }
+                    // traverse all
+                    true
                 }
-                // traverse all
-                true
+                if (result.isNotEmpty()) {
+                    return@time result.toTypedArray()
+                }
             }
-            if (result.isEmpty()) {
-                super.findClasses(qName, scope)
-            }
-            else {
-                result.toTypedArray()
-            }
+
+            PsiClass.EMPTY_ARRAY
         }
     }
 
@@ -141,6 +142,13 @@ class KotlinCliJavaFileManagerImpl(private val myPsiManager: PsiManager) : CoreJ
     }
 
     override fun knownClassNamesInPackage(packageFqName: FqName) = index.collectKnownClassNamesInPackage(packageFqName)
+
+    override fun findModules(moduleName: String, scope: GlobalSearchScope): Collection<PsiJavaModule> {
+        // TODO
+        return emptySet()
+    }
+
+    override fun getNonTrivialPackagePrefixes(): Collection<String> = emptyList()
 
     companion object {
         private val LOG = Logger.getInstance(KotlinCliJavaFileManagerImpl::class.java)

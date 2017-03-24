@@ -122,7 +122,7 @@ class KotlinCoreEnvironment private constructor(
 
         override fun registerJavaPsiFacade() {
             with (project) {
-                registerService(CoreJavaFileManager::class.java, ServiceManager.getService(this, JavaFileManager::class.java) as CoreJavaFileManager)
+                // registerService(CoreJavaFileManager::class.java, ServiceManager.getService(this, JavaFileManager::class.java) as CoreJavaFileManager)
 
                 val cliLightClassGenerationSupport = CliLightClassGenerationSupport(this)
                 registerService(LightClassGenerationSupport::class.java, cliLightClassGenerationSupport)
@@ -209,8 +209,7 @@ class KotlinCoreEnvironment private constructor(
         rootsIndex = indexFactory.makeIndexFor(initialRoots)
         updateClasspathFromRootsIndex(rootsIndex)
 
-        (ServiceManager.getService(project, CoreJavaFileManager::class.java)
-                as KotlinCliJavaFileManagerImpl).initIndex(rootsIndex)
+        (ServiceManager.getService(project, JavaFileManager::class.java) as KotlinCliJavaFileManagerImpl).initIndex(rootsIndex)
 
         val finderFactory = CliVirtualFileFinderFactory(rootsIndex)
         project.registerService(MetadataFinderFactory::class.java, finderFactory)

@@ -15,8 +15,8 @@
  */
 package org.jetbrains.kotlin.cli.jvm
 
-import com.intellij.core.CoreJavaFileManager
 import com.intellij.openapi.components.ServiceManager
+import com.intellij.psi.impl.file.impl.JavaFileManager
 import com.intellij.psi.search.GlobalSearchScope
 import junit.framework.TestCase
 import org.intellij.lang.annotations.Language
@@ -196,7 +196,7 @@ class KotlinCliJavaFileManagerTest : KotlinTestWithEnvironment() {
 
         @Suppress("UNUSED_VARIABLE") // used to implicitly initialize classpath/index in the manager
         val coreJavaFileFinder = VirtualFileFinder.SERVICE.getInstance(project)
-        val coreJavaFileManager = ServiceManager.getService(project, CoreJavaFileManager::class.java) as KotlinCliJavaFileManagerImpl
+        val coreJavaFileManager = ServiceManager.getService(project, JavaFileManager::class.java) as KotlinCliJavaFileManagerImpl
 
         val root = environment.contentRootToVirtualFile(JavaSourceRoot(javaFilesDir!!, null))!!
         coreJavaFileManager.initIndex(JvmDependenciesIndexImpl(listOf(JavaRoot(root, JavaRoot.RootType.SOURCE))))

@@ -16,15 +16,30 @@
 
 package org.jetbrains.kotlin.cli.jvm.compiler
 
+import com.intellij.core.CoreJavaFileManager
 import com.intellij.core.JavaCoreApplicationEnvironment
 import com.intellij.core.JavaCoreProjectEnvironment
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
-import com.intellij.psi.controlFlow.ControlFlowFactory
+import java.lang.reflect.Field
+import java.lang.reflect.Modifier
 
 open class KotlinCoreProjectEnvironment(
         disposable: Disposable,
         applicationEnvironment: JavaCoreApplicationEnvironment
 ) : JavaCoreProjectEnvironment(disposable, applicationEnvironment) {
     override fun createCoreFileManager() = KotlinCliJavaFileManagerImpl(PsiManager.getInstance(project))
+
+    override fun addSourcesToClasspath(root: VirtualFile) {
+        val field = JavaCoreProjectEnvironment::class.java.getDeclaredField("myFileManager")
+        field.isAccessible = true
+        val old = field.get(this) as KotlinCliJavaFileManagerImpl
+        val modifiersField = Field::class.java.getDeclaredField("modifiers")
+        modifiersField.isAccessible = true
+        modifiersField.setInt(field, field.modifiers and Modifier.FINAL.inv())
+        field.set(this, CoreJavaFileManager(myPsiManager))
+        super.addSourcesToClasspath(root)
+        field.set(this, old)
+    }
 }
