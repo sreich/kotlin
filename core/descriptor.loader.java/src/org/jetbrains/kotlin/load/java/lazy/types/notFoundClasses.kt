@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 JetBrains s.r.o.
+ * Copyright 2010-2017 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ internal fun parseCanonicalFqNameIgnoringTypeArguments(fqName: String): ClassId 
 // "test.A<B.C>.D<E<F.G, H>, I.J>" -> ["test", "A<B.C>", "D<E<F.G, H>, I.J>"]
 private fun String.splitCanonicalFqName(): List<String> {
     fun String.toNonEmpty(): String =
-            if (this.isNotEmpty()) this else SpecialNames.SAFE_IDENTIFIER_FOR_NO_NAME.asString()
+            if (this.isNotEmpty()) this else SpecialNames.NO_NAME_PROVIDED.asString()
 
     val result = arrayListOf<String>()
     var balance = 0

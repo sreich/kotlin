@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2015 JetBrains s.r.o.
+ * Copyright 2010-2017 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,12 +19,10 @@ package org.jetbrains.kotlin.idea.stubs
 import com.intellij.psi.impl.DebugUtil
 import com.intellij.psi.stubs.StubElement
 import com.intellij.testFramework.fixtures.LightCodeInsightFixtureTestCase
-import org.jetbrains.kotlin.name.SpecialNames
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.stubs.elements.KtFileStubBuilder
 import org.jetbrains.kotlin.psi.stubs.impl.STUB_TO_STRING_PREFIX
 import org.jetbrains.kotlin.test.KotlinTestUtils
-
 import java.io.File
 
 abstract class AbstractStubBuilderTest : LightCodeInsightFixtureTestCase() {
@@ -39,11 +37,9 @@ abstract class AbstractStubBuilderTest : LightCodeInsightFixtureTestCase() {
 
     companion object {
         fun serializeStubToString(stubElement: StubElement<*>): String {
-            val treeStr = DebugUtil.stubTreeToString(stubElement).replace(SpecialNames.SAFE_IDENTIFIER_FOR_NO_NAME.asString(), "<no name>")
-
             // Nodes are stored in form "NodeType:Node" and have too many repeating information for Kotlin stubs
             // Remove all repeating information (See KotlinStubBaseImpl.toString())
-            return treeStr
+            return DebugUtil.stubTreeToString(stubElement)
                     .lines().map {
                         if (it.contains(STUB_TO_STRING_PREFIX)) {
                             it.takeWhile { it.isWhitespace() } + it.substringAfter("KotlinStub$")

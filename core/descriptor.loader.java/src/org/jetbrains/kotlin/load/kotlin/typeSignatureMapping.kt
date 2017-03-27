@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 JetBrains s.r.o.
+ * Copyright 2010-2017 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@ import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.load.java.typeEnhancement.hasEnhancedNullability
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.name.SpecialNames
 import org.jetbrains.kotlin.platform.JavaToKotlinClassMap
 import org.jetbrains.kotlin.resolve.DescriptorUtils
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameUnsafe
@@ -223,7 +222,7 @@ fun computeInternalName(
 ): String {
     val container = klass.containingDeclaration
 
-    val name = SpecialNames.safeIdentifier(klass.name).identifier
+    val name = klass.name.identifier
     if (container is PackageFragmentDescriptor) {
         val fqName = container.fqName
         return if (fqName.isRoot) name else fqName.asString().replace('.', '/') + '/' + name

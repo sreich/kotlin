@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2015 JetBrains s.r.o.
+ * Copyright 2010-2017 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.kotlin.load.java.structure.JavaClassifierType;
 import org.jetbrains.kotlin.load.java.structure.JavaTypeParameter;
 import org.jetbrains.kotlin.name.Name;
-import org.jetbrains.kotlin.name.SpecialNames;
+import org.jetbrains.kotlin.psi.KtPsiUtil;
 
 import java.util.Collection;
 
@@ -37,7 +37,7 @@ public class JavaTypeParameterImpl extends JavaClassifierImpl<PsiTypeParameter> 
     @NotNull
     @Override
     public Name getName() {
-        return SpecialNames.safeIdentifier(getPsi().getName());
+        return KtPsiUtil.safeName(getPsi().getName());
     }
 
     @Override
