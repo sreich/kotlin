@@ -17,8 +17,11 @@
 package org.jetbrains.kotlin.load.java.structure.impl;
 
 import com.intellij.psi.*;
+import com.intellij.psi.impl.compiled.ClsJavaCodeReferenceElementImpl;
+import com.intellij.psi.impl.source.PsiClassReferenceType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.kotlin.load.java.structure.JavaClassifierFactory;
 import org.jetbrains.kotlin.load.java.structure.JavaClassifierType;
 import org.jetbrains.kotlin.load.java.structure.JavaType;
 
@@ -41,13 +44,23 @@ public class JavaClassifierTypeImpl extends JavaTypeImpl<PsiClassType> implement
 
     private ResolutionResult resolutionResult;
 
-    public JavaClassifierTypeImpl(@NotNull PsiClassType psiClassType) {
+    public static JavaClassifierType create(@NotNull PsiClassType psiClassType) {
+
+        if (psiClassType instanceof PsiClassReferenceType && ((PsiClassReferenceType) psiClassType).getReference() instanceof ClsJavaCodeReferenceElementImpl) {
+            String text = ((PsiClassReferenceType) psiClassType).getReference().getCanonicalText();
+            return JavaClassifierTypeByFqName.createByCanonicalText(text);
+        }
+
+        return new JavaClassifierTypeImpl(psiClassType);
+    }
+
+    private JavaClassifierTypeImpl(@NotNull PsiClassType psiClassType) {
         super(psiClassType);
     }
 
-    @Override
     @Nullable
-    public JavaClassifierImpl<?> getClassifier() {
+    @Override
+    public JavaClassifierImpl<?> getClassifier(@NotNull JavaClassifierFactory f) {
         resolve();
         return resolutionResult.classifier;
     }
@@ -82,15 +95,15 @@ public class JavaClassifierTypeImpl extends JavaTypeImpl<PsiClassType> implement
     }
 
     @Override
-    public boolean isRaw() {
+    public boolean isRaw(@NotNull JavaClassifierFactory f) {
         resolve();
         return resolutionResult.isRaw;
     }
 
     @Override
     @NotNull
-    public List<JavaType> getTypeArguments() {
-        JavaClassifierImpl<?> classifier = getClassifier();
+    public List<JavaType> getTypeArguments(@NotNull JavaClassifierFactory f) {
+        JavaClassifierImpl<?> classifier = getClassifier(f);
         if (!(classifier instanceof JavaClassImpl)) return Collections.emptyList();
 
         // parameters including ones from outer class

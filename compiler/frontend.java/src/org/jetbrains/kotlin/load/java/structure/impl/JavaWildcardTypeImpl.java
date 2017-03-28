@@ -20,6 +20,7 @@ import com.intellij.psi.PsiType;
 import com.intellij.psi.PsiWildcardType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.kotlin.load.java.structure.JavaType;
 import org.jetbrains.kotlin.load.java.structure.JavaWildcardType;
 
 public class JavaWildcardTypeImpl extends JavaTypeImpl<PsiWildcardType> implements JavaWildcardType {
@@ -29,7 +30,7 @@ public class JavaWildcardTypeImpl extends JavaTypeImpl<PsiWildcardType> implemen
 
     @Override
     @Nullable
-    public JavaTypeImpl<?> getBound() {
+    public JavaType getBound() {
         PsiType bound = getPsi().getBound();
         return bound == null ? null : create(bound);
     }

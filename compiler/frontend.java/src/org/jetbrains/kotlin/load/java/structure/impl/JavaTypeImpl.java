@@ -44,8 +44,8 @@ public abstract class JavaTypeImpl<Psi extends PsiType> implements JavaType, Jav
     }
 
     @NotNull
-    public static JavaTypeImpl<?> create(@NotNull PsiType psiType) {
-        return psiType.accept(new PsiTypeVisitor<JavaTypeImpl<?>>() {
+    public static JavaType create(@NotNull PsiType psiType) {
+        return psiType.accept(new PsiTypeVisitor<JavaType>() {
             @Nullable
             @Override
             public JavaTypeImpl<?> visitType(@NotNull PsiType type) {
@@ -66,8 +66,8 @@ public abstract class JavaTypeImpl<Psi extends PsiType> implements JavaType, Jav
 
             @Nullable
             @Override
-            public JavaTypeImpl<?> visitClassType(@NotNull PsiClassType classType) {
-                return new JavaClassifierTypeImpl(classType);
+            public JavaType visitClassType(@NotNull PsiClassType classType) {
+                return JavaClassifierTypeImpl.create(classType);
             }
 
             @Nullable

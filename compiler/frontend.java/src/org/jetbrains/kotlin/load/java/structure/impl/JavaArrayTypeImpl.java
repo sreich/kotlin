@@ -19,6 +19,7 @@ package org.jetbrains.kotlin.load.java.structure.impl;
 import com.intellij.psi.PsiArrayType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.kotlin.load.java.structure.JavaArrayType;
+import org.jetbrains.kotlin.load.java.structure.JavaType;
 
 public class JavaArrayTypeImpl extends JavaTypeImpl<PsiArrayType> implements JavaArrayType {
     public JavaArrayTypeImpl(@NotNull PsiArrayType psiArrayType) {
@@ -27,7 +28,7 @@ public class JavaArrayTypeImpl extends JavaTypeImpl<PsiArrayType> implements Jav
 
     @Override
     @NotNull
-    public JavaTypeImpl<?> getComponentType() {
+    public JavaType getComponentType() {
         return JavaTypeImpl.create(getPsi().getComponentType());
     }
 }

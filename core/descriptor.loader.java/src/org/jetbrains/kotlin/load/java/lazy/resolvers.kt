@@ -21,14 +21,16 @@ import org.jetbrains.kotlin.descriptors.TypeParameterDescriptor
 import org.jetbrains.kotlin.load.java.lazy.descriptors.LazyJavaTypeParameterDescriptor
 import org.jetbrains.kotlin.load.java.structure.JavaTypeParameter
 import org.jetbrains.kotlin.load.java.structure.JavaTypeParameterListOwner
-import org.jetbrains.kotlin.utils.mapToIndex
 
 interface TypeParameterResolver {
     object EMPTY : TypeParameterResolver {
         override fun resolveTypeParameter(javaTypeParameter: JavaTypeParameter): TypeParameterDescriptor? = null
+        override fun resolveTypeParameter(p1: String) = null
     }
 
     fun resolveTypeParameter(javaTypeParameter: JavaTypeParameter): TypeParameterDescriptor?
+
+    fun resolveTypeParameter(p1: String): JavaTypeParameter?
 }
 
 class LazyJavaTypeParameterResolver(
@@ -37,16 +39,22 @@ class LazyJavaTypeParameterResolver(
         typeParameterOwner: JavaTypeParameterListOwner,
         private val typeParametersIndexOffset: Int
 ) : TypeParameterResolver {
-    private val typeParameters: Map<JavaTypeParameter, Int> = typeParameterOwner.typeParameters.mapToIndex()
-
+    private val typeParameters: Map<String, Pair<Int, JavaTypeParameter>> = mutableMapOf<String, Pair<Int, JavaTypeParameter>>().apply {
+        for ((index, typeParameter) in typeParameterOwner.typeParameters.withIndex()) {
+            put(typeParameter.name.asString(), index to typeParameter)
+        }
+    }
     private val resolve = c.storageManager.createMemoizedFunctionWithNullableValues {
-        typeParameter: JavaTypeParameter ->
-        typeParameters[typeParameter]?.let { index ->
+        name: String ->
+        typeParameters[name]?.let { (index, typeParameter) ->
             LazyJavaTypeParameterDescriptor(c.child(this), typeParameter, typeParametersIndexOffset + index, containingDeclaration)
         }
     }
 
     override fun resolveTypeParameter(javaTypeParameter: JavaTypeParameter): TypeParameterDescriptor? {
-        return resolve(javaTypeParameter) ?: c.typeParameterResolver.resolveTypeParameter(javaTypeParameter)
+        return resolve(javaTypeParameter.name.asString()) ?: c.typeParameterResolver.resolveTypeParameter(javaTypeParameter)
     }
+
+    override fun resolveTypeParameter(p1: String) =
+            resolve(p1)?.javaTypeParameter ?: c.typeParameterResolver.resolveTypeParameter(p1)
 }

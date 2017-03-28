@@ -30,7 +30,9 @@ import org.jetbrains.kotlin.load.java.lazy.LazyJavaResolverContext
 import org.jetbrains.kotlin.load.java.lazy.TypeParameterResolver
 import org.jetbrains.kotlin.load.java.lazy.types.JavaTypeFlexibility.*
 import org.jetbrains.kotlin.load.java.structure.*
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.platform.JavaToKotlinClassMap
 import org.jetbrains.kotlin.types.*
 import org.jetbrains.kotlin.types.Variance.*
@@ -43,7 +45,28 @@ private val JAVA_LANG_CLASS_FQ_NAME: FqName = FqName("java.lang.Class")
 class JavaTypeResolver(
         private val c: LazyJavaResolverContext,
         private val typeParameterResolver: TypeParameterResolver
-) {
+) : JavaClassifierFactory {
+
+    override fun findClassifier(qName: String) = typeParameterResolver.resolveTypeParameter(qName) ?: findClass(qName)
+
+    private fun findClass(qName: String): JavaClassifier? {
+        val fqName = FqName(qName)
+        var packageFqName = fqName.parent()
+        var nestedFqName = FqName(fqName.shortName().asString())
+
+        while (true) {
+            c.components.finder.findClass(ClassId(packageFqName, nestedFqName, false))?.let { return it }
+
+            if (packageFqName.isRoot) break
+
+            nestedFqName = FqName.fromSegments(
+                    listOf(packageFqName.shortName().asString()) + nestedFqName.pathSegments().map(Name::asString)
+            )
+            packageFqName = packageFqName.parent()
+        }
+
+        return null
+    }
 
     fun transformJavaType(javaType: JavaType, attr: JavaTypeAttributes): KotlinType {
         return when (javaType) {
@@ -90,8 +113,8 @@ class JavaTypeResolver(
         fun errorType() = ErrorUtils.createErrorType("Unresolved java class ${javaType.presentableText}")
 
         val allowFlexible = attr.allowFlexible && attr.howThisTypeIsUsed != SUPERTYPE
-        val isRaw = javaType.isRaw
-        if (!javaType.isRaw && !allowFlexible) {
+        val isRaw = javaType.isRaw(this)
+        if (!javaType.isRaw(this) && !allowFlexible) {
             return computeSimpleJavaClassifierType(javaType, attr) ?: errorType()
         }
 
@@ -100,7 +123,7 @@ class JavaTypeResolver(
         val lower = computeBound(lower = true) ?: return errorType()
         val upper = computeBound(lower = false) ?: return errorType()
 
-        return if (javaType.isRaw) {
+        return if (javaType.isRaw(this)) {
             RawTypeImpl(lower, upper)
         }
         else {
@@ -118,7 +141,7 @@ class JavaTypeResolver(
     }
 
     private fun computeTypeConstructor(javaType: JavaClassifierType, attr: JavaTypeAttributes): TypeConstructor? {
-        val classifier = javaType.classifier ?: return createNotFoundClass(javaType)
+        val classifier = javaType.getClassifier(this) ?: return createNotFoundClass(javaType)
         return when (classifier) {
             is JavaClass -> {
                 val fqName = classifier.fqName.sure { "Class type should have a FQ name: $classifier" }
@@ -183,7 +206,7 @@ class JavaTypeResolver(
     ): Boolean {
         fun JavaType?.isSuperWildcard(): Boolean = (this as? JavaWildcardType)?.let { it.bound != null && !it.isExtends } ?: false
 
-        if (!typeArguments.lastOrNull().isSuperWildcard()) return false
+        if (!getTypeArguments(this@JavaTypeResolver).lastOrNull().isSuperWildcard()) return false
         val mutableLastParameterVariance = JavaToKotlinClassMap.INSTANCE.convertReadOnlyToMutable(readOnlyContainer)
                                                    .typeConstructor.parameters.lastOrNull()?.variance ?: return false
 
@@ -197,7 +220,7 @@ class JavaTypeResolver(
             // This option is needed because sometimes we get weird versions of JDK classes in the class path,
             // such as collections with no generics, so the Java types are not raw, formally, but they don't match with
             // their Kotlin analogs, so we treat them as raw to avoid exceptions
-            javaType.typeArguments.isEmpty() && !constructor.parameters.isEmpty()
+            javaType.getTypeArguments(this).isEmpty() && !constructor.parameters.isEmpty()
         }
 
         val typeParameters = constructor.parameters
@@ -227,12 +250,12 @@ class JavaTypeResolver(
             }.toList()
         }
 
-        if (typeParameters.size != javaType.typeArguments.size) {
+        if (typeParameters.size != javaType.getTypeArguments(this).size) {
             // Most of the time this means there is an error in the Java code
             return typeParameters.map { p -> TypeProjectionImpl(ErrorUtils.createErrorType(p.name.asString())) }.toList()
         }
         val howTheProjectionIsUsed = if (attr.howThisTypeIsUsed == SUPERTYPE) SUPERTYPE_ARGUMENT else TYPE_ARGUMENT
-        return javaType.typeArguments.withIndex().map {
+        return javaType.getTypeArguments(this).withIndex().map {
             indexedArgument ->
             val (i, javaTypeArgument) = indexedArgument
 
@@ -280,13 +303,13 @@ class JavaTypeResolver(
         return !attr.isMarkedNotNull &&
         // 'L extends List<T>' in Java is a List<T> in Kotlin, not a List<T?>
         // nullability will be taken care of in individual member signatures
-        when (javaType.classifier) {
+        when (javaType.getClassifier(this)) {
             is JavaTypeParameter -> {
                 attr.howThisTypeIsUsed !in setOf(TYPE_ARGUMENT, UPPER_BOUND, SUPERTYPE_ARGUMENT, SUPERTYPE)
             }
             is JavaClass,
             null -> attr.howThisTypeIsUsed !in setOf(TYPE_ARGUMENT, SUPERTYPE_ARGUMENT, SUPERTYPE)
-            else -> error("Unknown classifier: ${javaType.classifier}")
+            else -> error("Unknown classifier: ${javaType.getClassifier(this)}")
         }
     }
 }

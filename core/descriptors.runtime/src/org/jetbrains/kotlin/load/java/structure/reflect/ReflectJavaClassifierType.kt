@@ -16,17 +16,14 @@
 
 package org.jetbrains.kotlin.load.java.structure.reflect
 
-import org.jetbrains.kotlin.load.java.structure.JavaAnnotation
-import org.jetbrains.kotlin.load.java.structure.JavaClassifier
-import org.jetbrains.kotlin.load.java.structure.JavaClassifierType
-import org.jetbrains.kotlin.load.java.structure.JavaType
+import org.jetbrains.kotlin.load.java.structure.*
 import org.jetbrains.kotlin.name.FqName
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.lang.reflect.TypeVariable
 
 class ReflectJavaClassifierType(public override val reflectType: Type) : ReflectJavaType(), JavaClassifierType {
-    override val classifier: JavaClassifier = run {
+    override fun getClassifier(f: JavaClassifierFactory): JavaClassifier = run {
         val type = reflectType
         val classifier: JavaClassifier = when (type) {
             is Class<*> -> ReflectJavaClass(type)
@@ -43,11 +40,9 @@ class ReflectJavaClassifierType(public override val reflectType: Type) : Reflect
     override val presentableText: String
         get() = reflectType.toString()
 
-    override val isRaw: Boolean
-        get() = with(reflectType) { this is Class<*> && getTypeParameters().isNotEmpty() }
+    override fun isRaw(f: JavaClassifierFactory): Boolean = with(reflectType) { this is Class<*> && getTypeParameters().isNotEmpty() }
 
-    override val typeArguments: List<JavaType>
-        get() = reflectType.parameterizedTypeArguments.map(ReflectJavaType.Factory::create)
+    override fun getTypeArguments(f: JavaClassifierFactory): List<JavaType> = reflectType.parameterizedTypeArguments.map(ReflectJavaType.Factory::create)
 
     override val annotations: Collection<JavaAnnotation>
         get() {

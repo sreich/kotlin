@@ -25,13 +25,17 @@ interface JavaArrayType : JavaType {
 }
 
 interface JavaClassifierType : JavaType, JavaAnnotationOwner {
-    val classifier: JavaClassifier?
-    val typeArguments: List<JavaType>
+    fun getClassifier(f: JavaClassifierFactory): JavaClassifier?
+    fun getTypeArguments(f: JavaClassifierFactory): List<JavaType>
 
-    val isRaw: Boolean
+    fun isRaw(f: JavaClassifierFactory): Boolean
 
     val canonicalText: String
     val presentableText: String
+}
+
+interface JavaClassifierFactory {
+    fun findClassifier(qName: String): JavaClassifier?
 }
 
 interface JavaPrimitiveType : JavaType {
