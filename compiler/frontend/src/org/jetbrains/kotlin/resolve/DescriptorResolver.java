@@ -316,7 +316,9 @@ public class DescriptorResolver {
             if (valueParameter.hasValOrVar()) {
                 AnnotationSplitter annotationSplitter = AnnotationSplitter.create(
                         storageManager, allAnnotations, SetsKt.setOf(CONSTRUCTOR_PARAMETER));
-                valueParameterAnnotations = annotationSplitter.getAnnotationsForTarget(CONSTRUCTOR_PARAMETER);
+                valueParameterAnnotations = new CompositeAnnotations(
+                        annotationSplitter.getAnnotationsForTargets(CONSTRUCTOR_PARAMETER),
+                        annotationSplitter.getOtherAnnotations());
             }
             else {
                 valueParameterAnnotations = allAnnotations;
