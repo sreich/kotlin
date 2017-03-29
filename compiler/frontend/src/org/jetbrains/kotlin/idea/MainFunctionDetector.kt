@@ -20,7 +20,6 @@ import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtDeclaration
-import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.DescriptorUtils
@@ -68,9 +67,6 @@ class MainFunctionDetector {
 
         return isMain(getFunctionDescriptor(function))
     }
-
-    fun getMainFunction(files: Collection<KtFile>): KtNamedFunction? =
-        files.asSequence().map { findMainFunction(it.declarations) }.firstOrNull { it != null }
 
     fun getMainFunction(module: ModuleDescriptor): FunctionDescriptor? = getMainFunction(module, module.getPackage(FqName.ROOT))
 
