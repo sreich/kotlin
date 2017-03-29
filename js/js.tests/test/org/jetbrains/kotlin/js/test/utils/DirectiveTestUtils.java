@@ -340,9 +340,9 @@ public class DirectiveTestUtils {
         }
     }
 
-    private static void checkPropertyWriteCount(JsNode node, String propertyName, int count) throws Exception {
+    private static void checkPropertyWriteCount(JsNode node, String propertyName, int expectedCount) throws Exception {
         PropertyReferenceCollector counter = PropertyReferenceCollector.Companion.collect(node);
-        assertEquals("Property write count: " + propertyName, count, counter.unqualifiedWriteCount(propertyName));
+        assertEquals("Property write count: " + propertyName, expectedCount, counter.unqualifiedWriteCount(propertyName));
     }
 
 
