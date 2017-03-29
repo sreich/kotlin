@@ -52,7 +52,7 @@ object KotlinJavascriptSerializationUtil {
         ))
     }
 
-    fun readScope(
+    fun readDescriptors(
             metadata: PackagesWithHeaderMetadata,
             storageManager: StorageManager,
             module: ModuleDescriptor,
@@ -100,10 +100,10 @@ object KotlinJavascriptSerializationUtil {
 
     fun serializePackageFragment(bindingContext: BindingContext, module: ModuleDescriptor, fqName: FqName): ProtoBuf.PackageFragment {
         val packageView = module.getPackage(fqName)
-        return serializeScope(bindingContext, module, packageView.memberScope.getContributedDescriptors(), fqName)
+        return serializeDescriptors(bindingContext, module, packageView.memberScope.getContributedDescriptors(), fqName)
     }
 
-    fun serializeScope(
+    fun serializeDescriptors(
             bindingContext: BindingContext,
             module: ModuleDescriptor,
             scope: Collection<DeclarationDescriptor>,

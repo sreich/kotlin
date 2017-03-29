@@ -60,7 +60,7 @@ fun createTopDownAnalyzerForJs(
         val packagePartProviders = mutableListOf(get<KotlinCodeAnalyzer>().packageFragmentProvider)
         val moduleDescriptor = get<ModuleDescriptorImpl>()
         if (fallbackMetadata != null) {
-            packagePartProviders += KotlinJavascriptSerializationUtil.readScope(
+            packagePartProviders += KotlinJavascriptSerializationUtil.readDescriptors(
                     fallbackMetadata, moduleContext.storageManager, moduleDescriptor, DeserializationConfiguration.Default)
         }
         moduleDescriptor.initialize(CompositePackageFragmentProvider(packagePartProviders))

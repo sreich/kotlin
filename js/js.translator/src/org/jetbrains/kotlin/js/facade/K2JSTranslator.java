@@ -153,7 +153,7 @@ public final class K2JSTranslator {
                 }
 
                 if (scope != null) {
-                    ProtoBuf.PackageFragment part = KotlinJavascriptSerializationUtil.INSTANCE.serializeScope(
+                    ProtoBuf.PackageFragment part = KotlinJavascriptSerializationUtil.INSTANCE.serializeDescriptors(
                             bindingTrace.getBindingContext(), moduleDescriptor, scope, file.getPackageFqName());
                     binaryMetadata = part.toByteArray();
                 }
