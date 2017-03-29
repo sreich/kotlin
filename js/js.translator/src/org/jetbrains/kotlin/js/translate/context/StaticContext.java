@@ -153,9 +153,7 @@ public final class StaticContext {
         rootPackageScope = new JsObjectScope(rootScope, "<root package>");
 
         JsName kotlinName = rootScope.declareName(Namer.KOTLIN_NAME);
-        JsImportedModule kotlinModule = new JsImportedModule(Namer.KOTLIN_LOWER_NAME, kotlinName, null);
-        importedModules.put(kotlinModule.getKey(), kotlinModule);
-        fragment.getImportedModules().add(kotlinModule);
+        createImportedModule(new JsImportedModuleKey(Namer.KOTLIN_LOWER_NAME, null), Namer.KOTLIN_LOWER_NAME, kotlinName, null);
 
         classModelGenerator = new ClassModelGenerator(this);
     }
@@ -560,7 +558,6 @@ public final class StaticContext {
     private final class ObjectInstanceNameGenerator extends Generator<JsName> {
         public ObjectInstanceNameGenerator() {
             addRule(new Rule<JsName>() {
-                @Nullable
                 @Override
                 public JsName apply(@NotNull DeclarationDescriptor descriptor) {
                     String suggested = getSuggestedName(descriptor) + Namer.OBJECT_INSTANCE_FUNCTION_SUFFIX;
@@ -747,10 +744,15 @@ public final class StaticContext {
         JsImportedModule module = importedModules.get(key);
         if (module == null) {
             JsName internalName = JsScope.declareTemporaryName(Namer.LOCAL_MODULE_PREFIX + Namer.suggestedModuleName(baseName));
-            module = new JsImportedModule(baseName, internalName, plainName != null ? pureFqn(plainName, null) : null);
-            importedModules.put(key, module);
-            fragment.getImportedModules().add(module);
+            module = createImportedModule(key, baseName, internalName, plainName != null ? pureFqn(plainName, null) : null);
         }
+        return module;
+    }
+
+    private JsImportedModule createImportedModule(JsImportedModuleKey key, String baseName, JsName internalName, JsExpression plainName) {
+        JsImportedModule module = new JsImportedModule(baseName, internalName, plainName);
+        importedModules.put(key, module);
+        fragment.getImportedModules().add(module);
         return module;
     }
 
