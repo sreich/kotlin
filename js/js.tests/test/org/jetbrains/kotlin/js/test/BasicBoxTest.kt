@@ -394,9 +394,7 @@ abstract class BasicBoxTest(
                 currentModule.languageVersion = LanguageVersion.fromVersionString(version)
             }
 
-            return TestFile(temporaryFile.absolutePath, currentModule).apply {
-                recompile = RECOMPILE_PATTERN.matcher(text).find()
-            }
+            return TestFile(temporaryFile.absolutePath, currentModule, recompile = RECOMPILE_PATTERN.matcher(text).find())
         }
 
         override fun createModule(name: String, dependencies: List<String>): TestModule? {
@@ -408,12 +406,10 @@ abstract class BasicBoxTest(
         }
     }
 
-    private class TestFile(val fileName: String, val module: TestModule) {
+    private class TestFile(val fileName: String, val module: TestModule, val recompile: Boolean) {
         init {
             module.files += this
         }
-
-        var recompile = false
     }
 
     private class TestModule(
