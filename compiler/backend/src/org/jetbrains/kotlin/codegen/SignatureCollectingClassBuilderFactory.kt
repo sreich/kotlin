@@ -19,6 +19,8 @@ package org.jetbrains.kotlin.codegen
 import com.intellij.psi.PsiElement
 import com.intellij.util.containers.LinkedMultiMap
 import com.intellij.util.containers.MultiMap
+import com.sun.org.apache.bcel.internal.generic.EmptyVisitor
+import org.jetbrains.kotlin.cfg.pseudocode.or
 import org.jetbrains.kotlin.resolve.jvm.diagnostics.ConflictingJvmDeclarationsData
 import org.jetbrains.kotlin.resolve.jvm.diagnostics.JvmDeclarationOrigin
 import org.jetbrains.kotlin.resolve.jvm.diagnostics.MemberKind
@@ -27,7 +29,7 @@ import org.jetbrains.org.objectweb.asm.FieldVisitor
 import org.jetbrains.org.objectweb.asm.MethodVisitor
 
 abstract class SignatureCollectingClassBuilderFactory(
-        delegate: ClassBuilderFactory
+        delegate: ClassBuilderFactory, val shouldGenerate: (JvmDeclarationOrigin) -> Boolean
 ) : DelegatingClassBuilderFactory(delegate) {
 
     protected abstract fun handleClashingSignatures(data: ConflictingJvmDeclarationsData)
@@ -57,11 +59,17 @@ abstract class SignatureCollectingClassBuilderFactory(
 
         override fun newField(origin: JvmDeclarationOrigin, access: Int, name: String, desc: String, signature: String?, value: Any?): FieldVisitor {
             signatures.putValue(RawSignature(name, desc, MemberKind.FIELD), origin)
+            if (!shouldGenerate(origin)) {
+                return AbstractClassBuilder.EMPTY_FIELD_VISITOR
+            }
             return super.newField(origin, access, name, desc, signature, value)
         }
 
         override fun newMethod(origin: JvmDeclarationOrigin, access: Int, name: String, desc: String, signature: String?, exceptions: Array<out String>?): MethodVisitor {
             signatures.putValue(RawSignature(name, desc, MemberKind.METHOD), origin)
+            if (!shouldGenerate(origin)) {
+                return AbstractClassBuilder.EMPTY_METHOD_VISITOR
+            }
             return super.newMethod(origin, access, name, desc, signature, exceptions)
         }
 
