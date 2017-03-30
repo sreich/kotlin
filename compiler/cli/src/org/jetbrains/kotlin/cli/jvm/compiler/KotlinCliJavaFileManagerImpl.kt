@@ -23,6 +23,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.*
 import com.intellij.psi.impl.file.PsiPackageImpl
 import com.intellij.psi.search.GlobalSearchScope
+import gnu.trove.THashMap
 import org.jetbrains.kotlin.cli.jvm.index.JavaRoot
 import org.jetbrains.kotlin.cli.jvm.index.JvmDependenciesIndex
 import org.jetbrains.kotlin.name.ClassId
@@ -38,17 +39,21 @@ import kotlin.properties.Delegates
 class KotlinCliJavaFileManagerImpl(private val myPsiManager: PsiManager) : CoreJavaFileManager(myPsiManager), KotlinCliJavaFileManager {
     private val perfCounter = PerformanceCounter.create("Find Java class")
     private var index: JvmDependenciesIndex by Delegates.notNull()
+    private val cache: MutableMap<ClassId, PsiClass?> = THashMap()
     private val allScope = GlobalSearchScope.allScope(myPsiManager.project)
 
     fun initIndex(packagesCache: JvmDependenciesIndex) {
         this.index = packagesCache
     }
 
+
     override fun findClass(classId: ClassId, searchScope: GlobalSearchScope): PsiClass? = perfCounter.time {
         val relativeClassName = classId.relativeClassName.asString()
-        index.findClass(classId) { dir, type ->
-            findVirtualFileGivenPackage(dir, relativeClassName, type)
-        }?.findPsiClassInVirtualFile(searchScope, relativeClassName)
+        cache.getOrPut(classId) {
+            index.findClass(classId) { dir, type ->
+                findVirtualFileGivenPackage(dir, relativeClassName, type)
+            }?.findPsiClassInVirtualFile(allScope, relativeClassName)
+        }?.takeIf { it.containingFile.virtualFile in searchScope }
     }
 
     // this method is called from IDEA to resolve dependencies in Java code
@@ -130,6 +135,8 @@ class KotlinCliJavaFileManagerImpl(private val myPsiManager: PsiManager) : CoreJ
             JavaRoot.RootType.BINARY -> packageDir.findChild("$topLevelClassName.class")
             JavaRoot.RootType.SOURCE -> packageDir.findChild("$topLevelClassName.java")
         } ?: return null
+
+        vFile.contentsToByteArray()
 
         if (!vFile.isValid) {
             LOG.error("Invalid child of valid parent: ${vFile.path}; ${packageDir.isValid} path=${packageDir.path}")
