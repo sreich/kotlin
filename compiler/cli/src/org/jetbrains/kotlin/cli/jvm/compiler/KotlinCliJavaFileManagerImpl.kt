@@ -47,8 +47,8 @@ class KotlinCliJavaFileManagerImpl(private val myPsiManager: PsiManager) : CoreJ
     override fun findClass(classId: ClassId, searchScope: GlobalSearchScope): PsiClass? = perfCounter.time {
         val relativeClassName = classId.relativeClassName.asString()
         index.findClass(classId) { dir, type ->
-            findClassGivenPackage(allScope, dir, relativeClassName, type)
-        }?.takeIf { it.containingFile.virtualFile in searchScope }
+            findVirtualFileGivenPackage(dir, relativeClassName, type)
+        }?.findPsiClassInVirtualFile(searchScope, relativeClassName)
     }
 
     // this method is called from IDEA to resolve dependencies in Java code
@@ -89,7 +89,9 @@ class KotlinCliJavaFileManagerImpl(private val myPsiManager: PsiManager) : CoreJ
         forEachClassId(qName) { classId ->
             val relativeClassName = classId.relativeClassName.asString()
             index.traverseDirectoriesInPackage(classId.packageFqName) { dir, rootType ->
-                val psiClass = findClassGivenPackage(scope, dir, relativeClassName, rootType)
+                val psiClass =
+                        findVirtualFileGivenPackage(dir, relativeClassName, rootType)
+                        ?.findPsiClassInVirtualFile(scope, relativeClassName)
                 if (psiClass != null) {
                     result.add(psiClass)
                 }
@@ -118,10 +120,10 @@ class KotlinCliJavaFileManagerImpl(private val myPsiManager: PsiManager) : CoreJ
         return null
     }
 
-    private fun findClassGivenPackage(
-            scope: GlobalSearchScope, packageDir: VirtualFile,
+    private fun findVirtualFileGivenPackage(
+            packageDir: VirtualFile,
             classNameWithInnerClasses: String, rootType: JavaRoot.RootType
-    ): PsiClass? {
+    ): VirtualFile? {
         val topLevelClassName = classNameWithInnerClasses.substringBefore('.')
 
         val vFile = when (rootType) {
@@ -133,11 +135,18 @@ class KotlinCliJavaFileManagerImpl(private val myPsiManager: PsiManager) : CoreJ
             LOG.error("Invalid child of valid parent: ${vFile.path}; ${packageDir.isValid} path=${packageDir.path}")
             return null
         }
-        if (vFile !in scope) {
+
+        return vFile
+    }
+    private fun VirtualFile.findPsiClassInVirtualFile(
+            scope: GlobalSearchScope,
+            classNameWithInnerClasses: String
+    ): PsiClass? {
+        if (this !in scope) {
             return null
         }
 
-        val file = myPsiManager.findFile(vFile) as? PsiClassOwner ?: return null
+        val file = myPsiManager.findFile(this) as? PsiClassOwner ?: return null
         return findClassInPsiFile(classNameWithInnerClasses, file)
     }
 
