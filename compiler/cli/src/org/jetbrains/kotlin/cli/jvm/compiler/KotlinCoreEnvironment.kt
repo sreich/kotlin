@@ -28,6 +28,7 @@ import com.intellij.core.JavaCoreProjectEnvironment
 import com.intellij.lang.MetaLanguage
 import com.intellij.lang.java.JavaParserDefinition
 import com.intellij.mock.MockApplication
+import com.intellij.mock.MockFileIndexFacade
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.TransactionGuard
@@ -38,6 +39,7 @@ import com.intellij.openapi.extensions.ExtensionsArea
 import com.intellij.openapi.fileTypes.FileTypeExtensionPoint
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.FileIndexFacade
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.io.FileUtilRt
@@ -140,6 +142,13 @@ class KotlinCoreEnvironment private constructor(
             }
 
             super.registerJavaPsiFacade()
+        }
+
+        override fun createFileIndexFacade(): FileIndexFacade {
+            return object : MockFileIndexFacade(myProject) {
+                // All class files came to compiler belong to some library
+                override fun isInLibraryClasses(file: VirtualFile) = file.extension == "class"
+            }
         }
     }
     private val sourceFiles = ArrayList<KtFile>()
