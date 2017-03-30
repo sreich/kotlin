@@ -19,20 +19,17 @@ package org.jetbrains.kotlin.load.java.structure.impl
 import org.jetbrains.kotlin.load.java.structure.*
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.utils.addToStdlib.safeAs
-import org.jetbrains.kotlin.utils.parseClassifierType
 
 class JavaClassifierTypeByFqName(val qName: String, val arguments: List<JavaType>) : JavaClassifierType {
 
     companion object {
         @JvmStatic
         fun createByCanonicalText(canonicalText: String): JavaClassifierType {
-            return parseClassifierType.time {
-                val (qName, args, isArray, left) = parseClassifierOrArrayTypeInfo(canonicalText, 0)
-                assert(!isArray) { "Classifier type can't be an array" }
-                assert(left == canonicalText.length) { "Symbols left in canonical name: ${canonicalText.substring(left)}" }
+            val (qName, args, isArray, left) = parseClassifierOrArrayTypeInfo(canonicalText, 0)
+            assert(!isArray) { "Classifier type can't be an array" }
+            assert(left == canonicalText.length) { "Symbols left in canonical name: ${canonicalText.substring(left)}" }
 
-                JavaClassifierTypeByFqName(qName, args)
-            }
+            return JavaClassifierTypeByFqName(qName, args)
         }
     }
 
