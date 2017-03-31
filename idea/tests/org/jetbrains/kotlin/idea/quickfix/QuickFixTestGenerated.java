@@ -6515,6 +6515,18 @@ public class QuickFixTestGenerated extends AbstractQuickFixTest {
             doTest(fileName);
         }
 
+        @TestMetadata("noAbstractForObjectLiteralInDelegate.kt")
+        public void testNoAbstractForObjectLiteralInDelegate() throws Exception {
+            String fileName = KotlinTestUtils.navigationMetadata("idea/testData/quickfix/modifiers/noAbstractForObjectLiteralInDelegate.kt");
+            doTest(fileName);
+        }
+
+        @TestMetadata("noAbstractForObjectLiteralInDelegate2.kt")
+        public void testNoAbstractForObjectLiteralInDelegate2() throws Exception {
+            String fileName = KotlinTestUtils.navigationMetadata("idea/testData/quickfix/modifiers/noAbstractForObjectLiteralInDelegate2.kt");
+            doTest(fileName);
+        }
+
         @TestMetadata("notAnAnnotationClass.kt")
         public void testNotAnAnnotationClass() throws Exception {
             String fileName = KotlinTestUtils.navigationMetadata("idea/testData/quickfix/modifiers/notAnAnnotationClass.kt");
