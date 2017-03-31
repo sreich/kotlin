@@ -233,7 +233,12 @@ class DestructureIntention : SelfTargetingRangeIntention<KtDeclaration>(
             if (!noBadUsages) return null
 
             val droppedLastUnused = usagesToRemove.dropLastWhile { it.usagesToReplace.isEmpty() && it.declarationToDrop == null }
-            return UsagesToRemove(droppedLastUnused, removeSelectorInLoopRange)
+            return if (droppedLastUnused.isEmpty()) {
+                UsagesToRemove(usagesToRemove, removeSelectorInLoopRange)
+            }
+            else {
+                UsagesToRemove(droppedLastUnused, removeSelectorInLoopRange)
+            }
         }
 
         private fun Query<PsiReference>.iterateOverMapEntryPropertiesUsages(
