@@ -10640,6 +10640,12 @@ public class QuickFixTestGenerated extends AbstractQuickFixTest {
             doTest(fileName);
         }
 
+        @TestMetadata("breakInWhenInLabeled.kt")
+        public void testBreakInWhenInLabeled() throws Exception {
+            String fileName = KotlinTestUtils.navigationMetadata("idea/testData/quickfix/when/breakInWhenInLabeled.kt");
+            doTest(fileName);
+        }
+
         @TestMetadata("commasInConditionWithNoArguments.kt")
         public void testCommasInConditionWithNoArguments() throws Exception {
             String fileName = KotlinTestUtils.navigationMetadata("idea/testData/quickfix/when/commasInConditionWithNoArguments.kt");
