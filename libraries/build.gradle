@@ -116,8 +116,12 @@ static def configurePublishing(Project project) {
         uploadArchives {
             repositories {
                 mavenDeployer {
-                    beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
-                    repository(url: project.properties["deployRepoUrl"] ?: "file://${rootProject.buildDir}/repo") {
+                    beforeDeployment { MavenDeployment deployment ->
+                        if (signing.required)
+                            signing.signPom(deployment)
+                    }
+
+                    repository(url: project.properties["deployRepoUrl"] ?: project.properties["deploy-url"] ?: "file://${rootProject.buildDir}/repo") {
                         authentication(
                                 userName: project.properties["deployRepoUsername"],
                                 password: project.properties["deployRepoPassword"]
