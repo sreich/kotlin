@@ -19,8 +19,6 @@ package org.jetbrains.kotlin.codegen
 import com.intellij.psi.PsiElement
 import com.intellij.util.containers.LinkedMultiMap
 import com.intellij.util.containers.MultiMap
-import com.sun.org.apache.bcel.internal.generic.EmptyVisitor
-import org.jetbrains.kotlin.cfg.pseudocode.or
 import org.jetbrains.kotlin.resolve.jvm.diagnostics.ConflictingJvmDeclarationsData
 import org.jetbrains.kotlin.resolve.jvm.diagnostics.JvmDeclarationOrigin
 import org.jetbrains.kotlin.resolve.jvm.diagnostics.MemberKind

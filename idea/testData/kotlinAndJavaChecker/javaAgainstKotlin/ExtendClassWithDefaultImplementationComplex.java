@@ -28,4 +28,12 @@ public class ExtendClassWithDefaultImplementationComplext {
     public static class Test7 extends BI implements S {
 
     }
+
+    public static interface Test8 extends A {
+
+    }
+
+    public static abstract class Test9 implements A {
+
+    }
 }

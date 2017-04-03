@@ -181,7 +181,7 @@ class GenerationState @JvmOverloads constructor(
                     { BuilderFactoryForDuplicateSignatureDiagnostics(
                             it, this.bindingContext, diagnostics,
                             fileClassesProvider, this.moduleName,
-                            shouldGenerate = { !shouldCollectSignatureButShouldNotGenerate(it) }
+                            shouldGenerate = { !shouldOnlyCollectSignatures(it) }
                     ).apply { duplicateSignatureFactory = this } },
                     { BuilderFactoryForDuplicateClassNameDiagnostics(it, diagnostics) },
                     { configuration.get(JVMConfigurationKeys.DECLARATIONS_JSON_PATH)
@@ -214,7 +214,7 @@ class GenerationState @JvmOverloads constructor(
         interceptedBuilderFactory.close()
     }
 
-    private fun shouldCollectSignatureButShouldNotGenerate(origin: JvmDeclarationOrigin)
+    private fun shouldOnlyCollectSignatures(origin: JvmDeclarationOrigin)
             = classBuilderMode == ClassBuilderMode.LIGHT_CLASSES && origin.originKind == CLASS_MEMBER_DELEGATION_TO_DEFAULT_IMPL
 }
 

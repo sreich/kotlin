@@ -18,9 +18,11 @@ package org.jetbrains.kotlin.idea.java
 
 import com.intellij.codeInsight.ClassUtil.getAnyMethodToImplement
 import com.intellij.codeInsight.daemon.JavaErrorMessages
-import com.intellij.codeInsight.daemon.impl.analysis.HighlightNamesUtil.*
+import com.intellij.codeInsight.daemon.impl.analysis.HighlightNamesUtil.getClassDeclarationTextRange
 import com.intellij.codeInsight.daemon.impl.analysis.HighlightUtil
 import com.intellij.codeInsight.daemon.impl.analysis.JavaHighlightUtil
+import com.intellij.codeInsight.intention.QuickFixFactory
+import com.intellij.lang.annotation.Annotation
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.psi.*
@@ -32,6 +34,8 @@ import org.jetbrains.kotlin.utils.ifEmpty
 class UnimplementedKotlinInterfaceMemberAnnotator : Annotator {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
         if (element !is PsiClass || element.language == KotlinLanguage.INSTANCE) return
+
+        if (element.isInterface || element.hasModifierProperty(PsiModifier.ABSTRACT)) return
 
         if (getAnyMethodToImplement(element) != null) return // reported by java default annotator
 
@@ -57,6 +61,17 @@ class UnimplementedKotlinInterfaceMemberAnnotator : Annotator {
         val key = if (psiClass is PsiEnumConstantInitializer) "enum.constant.should.implement.method" else "class.must.be.abstract"
         val message = JavaErrorMessages.message(key, HighlightUtil.formatClass(psiClass, false), JavaHighlightUtil.formatMethod(method),
                                                 HighlightUtil.formatClass(method.containingClass, false))
-        holder.createErrorAnnotation(getClassDeclarationTextRange(psiClass), message)
+        val errorAnnotation = holder.createErrorAnnotation(getClassDeclarationTextRange(psiClass), message)
+        registerFixes(errorAnnotation, psiClass)
+    }
+
+    private fun registerFixes(errorAnnotation: Annotation, psiClass: PsiClass) {
+        val quickFixFactory = QuickFixFactory.getInstance()
+        // this code is untested
+        // see com.intellij.codeInsight.daemon.impl.analysis.HighlightClassUtil.checkClassWithAbstractMethods
+        errorAnnotation.registerFix(quickFixFactory.createImplementMethodsFix(psiClass))
+        if (psiClass !is PsiAnonymousClass && !(psiClass.modifierList?.hasExplicitModifier(PsiModifier.FINAL) ?: false)) {
+            errorAnnotation.registerFix(quickFixFactory.createModifierListFix(psiClass, PsiModifier.ABSTRACT, true, false))
+        }
     }
 }
