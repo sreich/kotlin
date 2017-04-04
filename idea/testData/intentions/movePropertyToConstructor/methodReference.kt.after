@@ -1,0 +1,6 @@
+class MySuperClass(val prop5: (MySuperClass) -> Unit = MySuperClass::test) {
+
+    fun test() {
+
+    }
+}

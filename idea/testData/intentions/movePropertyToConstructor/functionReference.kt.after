@@ -1,0 +1,8 @@
+class Baz
+
+fun foo(a: Int, b: String, d: Baz) {
+
+}
+
+class TestClass(val prop1: (Int, String, Baz) -> Unit = ::foo) {
+}

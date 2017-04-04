@@ -22,6 +22,7 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.builtins.functions.FunctionClassDescriptor
 import org.jetbrains.kotlin.descriptors.ParameterDescriptor
 import org.jetbrains.kotlin.descriptors.PropertyDescriptor
 import org.jetbrains.kotlin.descriptors.annotations.KotlinTarget
@@ -39,6 +40,7 @@ import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
 import org.jetbrains.kotlin.resolve.source.getPsi
 import org.jetbrains.kotlin.types.KotlinType
+import org.jetbrains.kotlin.types.TypeProjection
 
 
 class MovePropertyToConstructorIntention :
@@ -100,7 +102,7 @@ class MovePropertyToConstructorIntention :
                 propertyAnnotationsText?.takeIf(String::isNotBlank)?.let { appendWithSpaceBefore(it) }
                 appendWithSpaceBefore(element.valOrVarKeyword.text)
                 element.name?.let { appendWithSpaceBefore(it) }
-                appendWithSpaceBefore(": ${type.fqNameSafeAsString()}")
+                appendWithSpaceBefore(": ${type.format()}")
                 element.initializer?.text?.let { append(" = $it") }
             }
 
@@ -134,6 +136,35 @@ class MovePropertyToConstructorIntention :
                 text
 
     private fun KotlinType.fqNameSafeAsString() = constructor.declarationDescriptor?.fqNameSafe?.asString() ?: "<error type>"
+
+    private fun KotlinType.formatArguments(): String {
+        return if (arguments.isNotEmpty()) {
+            arguments.joinToString(prefix = "<", postfix = ">") { it.format() }
+        }
+        else {
+            ""
+        }
+    }
+
+    fun TypeProjection.format(): String {
+        return if (isStarProjection) {
+            "*"
+        }
+        else {
+            "${projectionKind.label} ${type.fqNameSafeAsString()}"
+        }
+    }
+
+    private fun KotlinType.format() =
+            if (isFunctionType()) formatFunctionType() else fqNameSafeAsString() + formatArguments()
+
+    private fun KotlinType.isFunctionType() = constructor.declarationDescriptor is FunctionClassDescriptor
+
+    private fun KotlinType.formatFunctionType(): String {
+        val parameters = arguments.subList(0, arguments.size - 1).joinToString(prefix = "(", postfix = ")" ) { it.format() }
+        val returnType = arguments.last().format()
+        return "$parameters -> $returnType"
+    }
 
     private fun KtModifierList.getModifiersText() = getModifiers().joinToString(separator = " ") { it.text }
 
