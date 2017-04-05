@@ -118,7 +118,8 @@ abstract class AbstractQuickFixTest : KotlinLightCodeInsightFixtureTestCase() {
         val fileName = testFullPath.substringAfterLast("/", "")
         val actionHint = ActionHint.parse(myFixture.file, contents.replace("\${file}", fileName, ignoreCase = true))
         val intention = findActionWithText(actionHint.expectedText)
-        if (actionHint.shouldPresent()) {
+        val actionShouldBeAvailable = true // FIXME: actionHint.shouldPresent() became package-private, will be fixed
+        if (actionShouldBeAvailable) {
             if (intention == null) {
                 fail("Action with text '" + actionHint.expectedText + "' not found\nAvailable actions: " +
                      myFixture.availableIntentions.joinToString(prefix = "[", postfix = "]") { it.text })
@@ -170,7 +171,8 @@ abstract class AbstractQuickFixTest : KotlinLightCodeInsightFixtureTestCase() {
     private fun checkForUnexpectedActions() {
         val text = myFixture.editor.document.text
         val actionHint = ActionHint.parse(myFixture.file, text)
-        if (!actionHint.shouldPresent()) {
+        val actionShouldBeAvailable = true // FIXME: actionHint.shouldPresent() became package-private, will be fixed
+        if (!actionShouldBeAvailable) {
             val actions = myFixture.availableIntentions
 
             val prefix = "class "
