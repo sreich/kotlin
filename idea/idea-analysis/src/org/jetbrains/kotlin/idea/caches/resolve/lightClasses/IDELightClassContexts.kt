@@ -125,12 +125,31 @@ object IDELightClassContexts {
         return IDELightClassConstructionContext(resolveSession.bindingContext, resolveSession.moduleDescriptor, EXACT)
     }
 
-    fun lightContextForClassOrObject(classOrObject: KtClassOrObject): LightClassConstructionContext {
+    fun lightContextForClassOrObject(classOrObject: KtClassOrObject): LightClassConstructionContext? {
+        if (!isDummyResolveApplicable(classOrObject)) return null
+
         val resolveSession = setupAdHocResolve(classOrObject.project, classOrObject.getResolutionFacade().moduleDescriptor, listOf(classOrObject.containingKtFile))
 
         ForceResolveUtil.forceResolveAllContents(resolveSession.resolveToDescriptor(classOrObject))
 
         return IDELightClassConstructionContext(resolveSession.bindingContext, resolveSession.moduleDescriptor, LIGHT)
+    }
+
+    // TODO: inner classes and tests for inner classes
+    private fun isDummyResolveApplicable(classOrObject: KtClassOrObject): Boolean {
+        val hasDelegatedMembers = classOrObject.superTypeListEntries.any { it is KtDelegatedSuperTypeEntry }
+        val dataClassWithGeneratedMembersOverridden = classOrObject.declarations.filterIsInstance<KtFunction>().any {
+            isGeneratedForDataClass(it.nameAsSafeName)
+        }
+        return !hasDelegatedMembers && !dataClassWithGeneratedMembersOverridden
+    }
+
+    private fun isGeneratedForDataClass(name: Name): Boolean {
+        return name == DataClassDescriptorResolver.COPY_METHOD_NAME ||
+               name == DataClassDescriptorResolver.EQUALS_METHOD_NAME ||
+               name == DataClassDescriptorResolver.HASH_CODE_METHOD_NAME ||
+               name == DataClassDescriptorResolver.TO_STRING_METHOD_NAME ||
+               DataClassDescriptorResolver.isComponentLike(name)
     }
 
     fun lightContextForFacade(files: List<KtFile>): LightClassConstructionContext {
@@ -329,6 +348,6 @@ object IDELightClassContexts {
     }
 
     private val notImplemented: Nothing
-            get() = error("Should not be called")
+        get() = error("Should not be called")
 }
 
