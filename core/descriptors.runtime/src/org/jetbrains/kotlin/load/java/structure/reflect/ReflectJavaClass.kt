@@ -31,7 +31,7 @@ class ReflectJavaClass(
 
     override val modifiers: Int get() = klass.modifiers
 
-    override val innerClasses: List<ReflectJavaClass>
+    override val innerClassNames: List<Name>
         get() = klass.declaredClasses
                 .asSequence()
                 .filterNot {
@@ -40,8 +40,16 @@ class ReflectJavaClass(
                     // nested class constructor accessed from the outer class
                     it.simpleName.isEmpty()
                 }
-                .map(::ReflectJavaClass)
-                .toList()
+                .mapNotNull { it.simpleName.takeIf(Name::isValidIdentifier)?.let(Name::identifier) }.toList()
+
+    override fun findInnerClass(name: Name) = klass.declaredClasses
+            .asSequence()
+            .firstOrNull {
+                // getDeclaredClasses() returns anonymous classes sometimes, for example enums with specialized entries (which are
+                // in fact anonymous classes) or in case of a special anonymous class created for the synthetic accessor to a private
+                // nested class constructor accessed from the outer class
+                it.simpleName == name.asString()
+            }?.let(::ReflectJavaClass)
 
     override val fqName: FqName
         get() = klass.classId.asSingleFqName()

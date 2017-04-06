@@ -23,8 +23,14 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.*
 import com.intellij.psi.impl.file.PsiPackageImpl
 import com.intellij.psi.search.GlobalSearchScope
+import gnu.trove.THashMap
 import org.jetbrains.kotlin.cli.jvm.index.JavaRoot
 import org.jetbrains.kotlin.cli.jvm.index.JvmDependenciesIndex
+import org.jetbrains.kotlin.load.java.structure.JavaClass
+import org.jetbrains.kotlin.load.java.structure.impl.JavaClassImpl
+import org.jetbrains.kotlin.load.java.structure.impl.classFiles.BinaryJavaClass
+import org.jetbrains.kotlin.load.java.structure.impl.classFiles.ClassifierResolver
+import org.jetbrains.kotlin.load.java.structure.impl.classFiles.SignatureParsingComponent
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.resolve.jvm.KotlinCliJavaFileManager
@@ -55,6 +61,40 @@ class KotlinCliJavaFileManagerImpl(private val myPsiManager: PsiManager) : CoreJ
                 findVirtualFileGivenPackage(dir, relativeClassName, type)
             }
         }?.takeIf { it in searchScope }
+    }
+
+    private val binaryCache: MutableMap<ClassId, JavaClass?> = THashMap()
+
+    override fun findJavaClass(classId: ClassId, searchScope: GlobalSearchScope): JavaClass? {
+        val virtualFile = findVirtualFileForTopLevelClass(classId, searchScope) ?: return null
+
+        if (virtualFile.extension == "class") {
+            // TODO:
+            if (virtualFile.nameWithoutExtension.contains("$")) return null
+            return binaryCache.getOrPut(classId) {
+                if (classId.outerClassId != null) {
+                    val outerClass = findJavaClass(classId.outerClassId!!, searchScope)
+                    return@getOrPut outerClass?.findInnerClass(classId.shortClassName)
+                }
+
+                val resolver = ClassifierResolver {
+                    forEachClassId(it) { classId ->
+                        findJavaClass(classId, searchScope)?.let { return@ClassifierResolver it }
+                    }
+
+                    null
+                }
+
+                BinaryJavaClass(
+                        virtualFile,
+                        null,
+                        resolver,
+                        SignatureParsingComponent(resolver)
+                )
+            }
+        }
+
+        return virtualFile.findPsiClassInVirtualFile(classId.relativeClassName.asString())?.let(::JavaClassImpl)
     }
 
     // this method is called from IDEA to resolve dependencies in Java code
