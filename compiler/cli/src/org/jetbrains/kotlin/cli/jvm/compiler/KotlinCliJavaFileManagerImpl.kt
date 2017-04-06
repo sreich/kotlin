@@ -35,6 +35,7 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.resolve.jvm.KotlinCliJavaFileManager
 import org.jetbrains.kotlin.util.PerformanceCounter
+import org.jetbrains.kotlin.util.readTopLevelClasses
 import java.util.*
 import kotlin.properties.Delegates
 
@@ -85,12 +86,14 @@ class KotlinCliJavaFileManagerImpl(private val myPsiManager: PsiManager) : CoreJ
                     null
                 }
 
-                BinaryJavaClass(
-                        virtualFile,
-                        null,
-                        resolver,
-                        SignatureParsingComponent(resolver)
-                )
+                readTopLevelClasses.time {
+                    BinaryJavaClass(
+                            virtualFile,
+                            null,
+                            resolver,
+                            SignatureParsingComponent(resolver)
+                    )
+                }
             }
         }
 

@@ -16,11 +16,12 @@
 
 package org.jetbrains.kotlin.util
 
-import java.lang.management.ManagementFactory
 import java.util.*
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicLong
+
+val readTopLevelClasses = PerformanceCounter.create("readTopLevel")
+val readInnerClasses = PerformanceCounter.create("readInnerClasses")
+val findVirtualFileForClass = PerformanceCounter.create("findVirtualFileForClass")
 
 /**
  * This counter is thread-safe for initialization and usage.

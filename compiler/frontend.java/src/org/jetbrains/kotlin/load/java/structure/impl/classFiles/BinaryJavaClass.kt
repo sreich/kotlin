@@ -22,6 +22,7 @@ import gnu.trove.THashMap
 import org.jetbrains.kotlin.load.java.structure.*
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.util.readInnerClasses
 import org.jetbrains.kotlin.utils.addIfNotNull
 import org.jetbrains.org.objectweb.asm.*
 import java.text.CharacterIterator
@@ -162,7 +163,9 @@ class BinaryJavaClass(
         val access = innerClassNameToAccess[name] ?: return null
 
         return virtualFile.parent.findChild("${virtualFile.nameWithoutExtension}$$name.class")?.let {
-            BinaryJavaClass(it, this, resolver.copy(), signatureParsingComponent, access)
+            readInnerClasses.time {
+                BinaryJavaClass(it, this, resolver.copy(), signatureParsingComponent, access)
+            }
         }
     }
 
