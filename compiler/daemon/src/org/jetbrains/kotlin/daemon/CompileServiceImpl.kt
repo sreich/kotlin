@@ -703,6 +703,10 @@ class CompileServiceImpl(
 
     private fun shutdownImpl() {
         log.info("Shutdown started")
+        fun Long.mb() = this / (1024 * 1024)
+        with (Runtime.getRuntime()) {
+            log.info("Memory stats: total: ${totalMemory().mb()}mb, free: ${freeMemory().mb()}mb, max: ${maxMemory().mb()}mb")
+        }
         state.alive.set(Aliveness.Dying.ordinal)
 
         UnicastRemoteObject.unexportObject(this, true)

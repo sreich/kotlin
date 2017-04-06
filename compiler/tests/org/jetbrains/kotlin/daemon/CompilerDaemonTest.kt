@@ -159,11 +159,13 @@ class CompilerDaemonTest : KotlinIntegrationTestBase() {
             withLogFile("kotlin-daemon1-test") { logFile1 ->
                 withLogFile("kotlin-daemon2-test") { logFile2 ->
                     val daemonJVMOptions1 =
-                            configureDaemonJVMOptions("D$COMPILE_DAEMON_LOG_PATH_PROPERTY=\"${logFile1.loggerCompatiblePath}\"",
+                            configureDaemonJVMOptions(DaemonJVMOptions(maxMemory = "256m"),
+                                                      "D$COMPILE_DAEMON_LOG_PATH_PROPERTY=\"${logFile1.loggerCompatiblePath}\"",
                                                       inheritMemoryLimits = false, inheritAdditionalProperties = false)
 
                     val daemonJVMOptions2 =
-                            configureDaemonJVMOptions("D$COMPILE_DAEMON_LOG_PATH_PROPERTY=\"${logFile2.loggerCompatiblePath}\"",
+                            configureDaemonJVMOptions(DaemonJVMOptions(maxMemory = "256m"),
+                                                      "D$COMPILE_DAEMON_LOG_PATH_PROPERTY=\"${logFile2.loggerCompatiblePath}\"",
                                                       inheritMemoryLimits = false, inheritAdditionalProperties = false)
 
                     assertTrue(logFile1.length() == 0L && logFile2.length() == 0L)
@@ -418,7 +420,7 @@ class CompilerDaemonTest : KotlinIntegrationTestBase() {
                         val logFile = createTempFile("kotlin-daemon-test", ".log")
                         logFiles[threadNo] = logFile
                         val daemonJVMOptions =
-                                configureDaemonJVMOptions(DaemonJVMOptions(maxMemory = "2048m"),
+                                configureDaemonJVMOptions(DaemonJVMOptions(maxMemory = "256m"),
                                                           "D$COMPILE_DAEMON_LOG_PATH_PROPERTY=\"${logFile.loggerCompatiblePath}\"",
                                                           inheritMemoryLimits = false, inheritAdditionalProperties = false)
                         val compileServiceSession = KotlinCompilerClient.connectAndLease(compilerId, flagFile, daemonJVMOptions, daemonOptions,
