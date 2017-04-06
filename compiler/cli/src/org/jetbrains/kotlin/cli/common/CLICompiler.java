@@ -19,6 +19,7 @@ package org.jetbrains.kotlin.cli.common;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.SystemInfo;
+import com.intellij.util.ArrayUtil;
 import kotlin.collections.ArraysKt;
 import org.fusesource.jansi.AnsiConsole;
 import org.jetbrains.annotations.NotNull;
@@ -36,6 +37,7 @@ import org.jetbrains.kotlin.progress.ProgressIndicatorAndCompilationCanceledStat
 import org.jetbrains.kotlin.utils.StringsKt;
 
 import java.io.PrintStream;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,7 +57,10 @@ public abstract class CLICompiler<A extends CommonCompilerArguments> {
     // Used in CompilerRunnerUtil#invokeExecMethod, in Eclipse plugin (KotlinCLICompiler) and in kotlin-gradle-plugin (GradleCompilerRunner)
     @NotNull
     public ExitCode execAndOutputXml(@NotNull PrintStream errStream, @NotNull Services services, @NotNull String... args) {
-        return exec(errStream, services, MessageRenderer.XML, args);
+        return exec(errStream, services, MessageRenderer.XML,
+                    ArraysKt.contains(args, "-Xoutput-xml")
+                    ? args
+                    : ArrayUtil.toStringArray(Arrays.asList(ArraysKt.plus(args, new String[] {"-Xoutput-xml"}))));
     }
 
     // Used via reflection in KotlinCompilerBaseTask

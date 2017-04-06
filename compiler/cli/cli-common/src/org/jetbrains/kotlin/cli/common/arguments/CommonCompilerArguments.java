@@ -104,6 +104,9 @@ public abstract class CommonCompilerArguments implements Serializable {
     )
     public String intellijPluginRoot;
 
+    @Argument(value = "-Xoutput-xml", description = "Output compiler messages in XML (the format is unspecified and may change at any moment)")
+    public boolean outputXml;
+
     @Argument(
             value = "-Xcoroutines",
             valueDescription = "{enable|warn|error}",
