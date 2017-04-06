@@ -51,7 +51,7 @@ class KotlinCliJavaFileManagerImpl(private val myPsiManager: PsiManager) : CoreJ
     }
 
     override fun findClass(classId: ClassId, searchScope: GlobalSearchScope): PsiClass? = perfCounter.time {
-        findVirtualFileForTopLevelClass(classId, searchScope)?.findPsiClassInVirtualFile(classId.relativeClassName.asString())
+        findVirtualFileForTopLevelClass(classId, searchScope)?.findPsiClassInVirtualFile(classId)
     }
 
     private fun findVirtualFileForTopLevelClass(classId: ClassId, searchScope: GlobalSearchScope): VirtualFile? {
@@ -94,7 +94,7 @@ class KotlinCliJavaFileManagerImpl(private val myPsiManager: PsiManager) : CoreJ
             }
         }
 
-        return virtualFile.findPsiClassInVirtualFile(classId.relativeClassName.asString())?.let(::JavaClassImpl)
+        return virtualFile.findPsiClassInVirtualFile(classId)?.let(::JavaClassImpl)
     }
 
     // this method is called from IDEA to resolve dependencies in Java code
@@ -138,7 +138,7 @@ class KotlinCliJavaFileManagerImpl(private val myPsiManager: PsiManager) : CoreJ
                 val psiClass =
                         findVirtualFileGivenPackage(dir, relativeClassName, rootType)
                             ?.takeIf { it in scope }
-                            ?.findPsiClassInVirtualFile(relativeClassName)
+                            ?.findPsiClassInVirtualFile(classId)
                 if (psiClass != null) {
                     result.add(psiClass)
                 }
@@ -187,11 +187,15 @@ class KotlinCliJavaFileManagerImpl(private val myPsiManager: PsiManager) : CoreJ
         return vFile
     }
 
+    private val cache = THashMap<String, PsiClass?>()
+
     private fun VirtualFile.findPsiClassInVirtualFile(
-            classNameWithInnerClasses: String
+            classNameWithInnerClasses: ClassId
     ): PsiClass? {
-        val file = myPsiManager.findFile(this) as? PsiClassOwner ?: return null
-        return findClassInPsiFile(classNameWithInnerClasses, file)
+        return cache.getOrPut(classNameWithInnerClasses.asString()) {
+            val file = myPsiManager.findFile(this) as? PsiClassOwner ?: return@getOrPut null
+            findClassInPsiFile(classNameWithInnerClasses.relativeClassName.asString(), file)
+        }
     }
 
     override fun knownClassNamesInPackage(packageFqName: FqName): Set<String> {
