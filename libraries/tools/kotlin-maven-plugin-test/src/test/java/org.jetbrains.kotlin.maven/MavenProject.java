@@ -66,9 +66,13 @@ class MavenProject {
         cmd.add("mvn");
         cmd.add("-Dkotlin.compiler.incremental.log.level=info");
 
-        String kotlinVersion = getNotNullSystemProperty("kotlin.version");
-        cmd.add("-Dkotlin.version=" + kotlinVersion);
-
+        String kotlinVersionProperty = "kotlin.version";
+        cmd.add("-D" + kotlinVersionProperty + "=" + getNotNullSystemProperty(kotlinVersionProperty));
+        String mavenRepoLocalProperty = "maven.repo.local";
+        String mavenRepoLocal = System.getProperty(mavenRepoLocalProperty);
+        if (mavenRepoLocal != null) {
+            cmd.add("-D" + mavenRepoLocalProperty + "=" + mavenRepoLocal);
+        }
         cmd.addAll(Arrays.asList(args));
 
         return cmd;
