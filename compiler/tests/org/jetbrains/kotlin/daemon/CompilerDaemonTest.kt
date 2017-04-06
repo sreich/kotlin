@@ -156,38 +156,40 @@ class CompilerDaemonTest : KotlinIntegrationTestBase() {
             KotlinCompilerClient.shutdownCompileService(compilerId, daemonOptions)
             KotlinCompilerClient.shutdownCompileService(compilerId2, daemonOptions)
 
-            val logFile1 = createTempFile("kotlin-daemon1-test", ".log")
-            val logFile2 = createTempFile("kotlin-daemon2-test", ".log")
-            val daemonJVMOptions1 =
-                    configureDaemonJVMOptions("D$COMPILE_DAEMON_LOG_PATH_PROPERTY=\"${logFile1.loggerCompatiblePath}\"",
-                                              inheritMemoryLimits = false, inheritAdditionalProperties = false)
+            withLogFile("kotlin-daemon1-test") { logFile1 ->
+                withLogFile("kotlin-daemon2-test") { logFile2 ->
+                    val daemonJVMOptions1 =
+                            configureDaemonJVMOptions("D$COMPILE_DAEMON_LOG_PATH_PROPERTY=\"${logFile1.loggerCompatiblePath}\"",
+                                                      inheritMemoryLimits = false, inheritAdditionalProperties = false)
 
-            val daemonJVMOptions2 =
-                    configureDaemonJVMOptions("D$COMPILE_DAEMON_LOG_PATH_PROPERTY=\"${logFile2.loggerCompatiblePath}\"",
-                                              inheritMemoryLimits = false, inheritAdditionalProperties = false)
+                    val daemonJVMOptions2 =
+                            configureDaemonJVMOptions("D$COMPILE_DAEMON_LOG_PATH_PROPERTY=\"${logFile2.loggerCompatiblePath}\"",
+                                                      inheritMemoryLimits = false, inheritAdditionalProperties = false)
 
-            assertTrue(logFile1.length() == 0L && logFile2.length() == 0L)
+                    assertTrue(logFile1.length() == 0L && logFile2.length() == 0L)
 
-            val jar1 = tmpdir.absolutePath + File.separator + "hello1.jar"
-            val res1 = compileOnDaemon(flagFile, compilerId, daemonJVMOptions1, daemonOptions, "-include-runtime", File(getHelloAppBaseDir(), "hello.kt").absolutePath, "-d", jar1)
-            assertEquals("first compilation failed:\n${res1.out}", 0, res1.resultCode)
+                    val jar1 = tmpdir.absolutePath + File.separator + "hello1.jar"
+                    val res1 = compileOnDaemon(flagFile, compilerId, daemonJVMOptions1, daemonOptions, "-include-runtime", File(getHelloAppBaseDir(), "hello.kt").absolutePath, "-d", jar1)
+                    assertEquals("first compilation failed:\n${res1.out}", 0, res1.resultCode)
 
-            logFile1.assertLogContainsSequence("Starting compilation with args: ")
-            assertEquals("expecting '${logFile2.absolutePath}' to be empty", 0L, logFile2.length())
+                    logFile1.assertLogContainsSequence("Starting compilation with args: ")
+                    assertEquals("expecting '${logFile2.absolutePath}' to be empty", 0L, logFile2.length())
 
-            val jar2 = tmpdir.absolutePath + File.separator + "hello2.jar"
-            val res2 = compileOnDaemon(flagFile, compilerId2, daemonJVMOptions2, daemonOptions, "-include-runtime", File(getHelloAppBaseDir(), "hello.kt").absolutePath, "-d", jar2)
-            assertEquals("second compilation failed:\n${res2.out}", 0, res1.resultCode)
+                    val jar2 = tmpdir.absolutePath + File.separator + "hello2.jar"
+                    val res2 = compileOnDaemon(flagFile, compilerId2, daemonJVMOptions2, daemonOptions, "-include-runtime", File(getHelloAppBaseDir(), "hello.kt").absolutePath, "-d", jar2)
+                    assertEquals("second compilation failed:\n${res2.out}", 0, res1.resultCode)
 
-            logFile2.assertLogContainsSequence("Starting compilation with args: ")
+                    logFile2.assertLogContainsSequence("Starting compilation with args: ")
 
-            KotlinCompilerClient.shutdownCompileService(compilerId, daemonOptions)
-            KotlinCompilerClient.shutdownCompileService(compilerId2, daemonOptions)
+                    KotlinCompilerClient.shutdownCompileService(compilerId, daemonOptions)
+                    KotlinCompilerClient.shutdownCompileService(compilerId2, daemonOptions)
 
-            Thread.sleep(100)
+                    Thread.sleep(100)
 
-            logFile1.assertLogContainsSequence("Shutdown started")
-            logFile2.assertLogContainsSequence("Shutdown started")
+                    logFile1.assertLogContainsSequence("Shutdown started")
+                    logFile2.assertLogContainsSequence("Shutdown started")
+                }
+            }
         }
     }
 
@@ -724,6 +726,17 @@ internal inline fun withFlagFile(prefix: String, suffix: String? = null, body: (
     }
     finally {
         file.delete()
+    }
+}
+
+internal inline fun withLogFile(prefix: String, suffix: String = ".log", body: (File) -> Unit) {
+    val logFile = createTempFile(prefix, suffix)
+    try {
+        body(logFile)
+    }
+    catch (e: Exception) {
+        System.err.println("--- log file ${logFile.name}:\n${logFile.readText()}\n---")
+        throw e
     }
 }
 
